@@ -1,13 +1,14 @@
 [Unit]
-Description=Vitesse Nuxt template read-only API
+Description=The Tutor Lyfe API
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
-User=vitesse-template
-Group=vitesse-template
-WorkingDirectory=/srv/vitesse-nuxt-template/current
+User=thetutorlyfe
+Group=thetutorlyfe
+WorkingDirectory=/srv/thetutorlyfe.com/current
+EnvironmentFile=-/etc/thetutorlyfe.com/api.env
 Environment=HOST=127.0.0.1
 Environment=NODE_ENV=production
 Environment=PORT=3006

@@ -15,20 +15,31 @@ fi
 
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 
-if ! getent group vitesse-template >/dev/null; then
-	groupadd --system vitesse-template
+if ! getent group thetutorlyfe >/dev/null; then
+	groupadd --system thetutorlyfe
 fi
-if ! id vitesse-template >/dev/null 2>&1; then
-	useradd --system --gid vitesse-template --home-dir /srv/vitesse-nuxt-template --shell /usr/sbin/nologin vitesse-template
+if ! id thetutorlyfe >/dev/null 2>&1; then
+	useradd --system --gid thetutorlyfe --home-dir /srv/thetutorlyfe.com --shell /usr/sbin/nologin thetutorlyfe
 fi
 
-install -d -o vitesse-template -g vitesse-template -m 0750 /srv/vitesse-nuxt-template
-install -d -o vitesse-template -g vitesse-template -m 0750 /srv/vitesse-nuxt-template/releases
-install -d -o vitesse-template -g vitesse-template -m 0750 /srv/vitesse-nuxt-template/shared
-install -d -o vitesse-template -g vitesse-template -m 0700 /srv/vitesse-nuxt-template/shared/npm-cache
-install -o root -g root -m 0644 "$script_dir/vitesse-nuxt-template-api.service" /etc/systemd/system/vitesse-nuxt-template-api.service
+install -d -o thetutorlyfe -g thetutorlyfe -m 0750 /srv/thetutorlyfe.com
+install -d -o thetutorlyfe -g thetutorlyfe -m 0750 /srv/thetutorlyfe.com/releases
+install -d -o thetutorlyfe -g thetutorlyfe -m 0750 /srv/thetutorlyfe.com/shared
+install -d -o thetutorlyfe -g thetutorlyfe -m 0700 /srv/thetutorlyfe.com/shared/npm-cache
+install -d -o root -g root -m 0700 /etc/thetutorlyfe.com
+if [[ -L /etc/thetutorlyfe.com/api.env || ( -e /etc/thetutorlyfe.com/api.env && ! -f /etc/thetutorlyfe.com/api.env ) ]]; then
+	echo "Refusing to replace non-file API configuration: /etc/thetutorlyfe.com/api.env" >&2
+	exit 1
+fi
+if [[ ! -e /etc/thetutorlyfe.com/api.env ]]; then
+	install -o root -g root -m 0600 "$script_dir/api.env.example" /etc/thetutorlyfe.com/api.env
+else
+	chown root:root /etc/thetutorlyfe.com/api.env
+	chmod 0600 /etc/thetutorlyfe.com/api.env
+fi
+install -o root -g root -m 0644 "$script_dir/thetutorlyfe-api.service" /etc/systemd/system/thetutorlyfe-api.service
 
 systemctl daemon-reload
-systemctl enable vitesse-nuxt-template-api.service
+systemctl enable thetutorlyfe-api.service
 
-echo "Installed the Docker-free Vitesse template API service without starting it. Install the Nginx server snippet and promote a prepared release."
+echo "Installed The Tutor Lyfe API service without starting it. Configure the lead webhook, install the Nginx server snippet, and promote a prepared release."

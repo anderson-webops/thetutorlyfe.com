@@ -9,7 +9,10 @@
 .playwright-cli
 playwright-report
 test-results
-.vitesse-release-prepared.json
+.tutorlyfe-release-prepared.json
+
+# Local visual-capture and comparison evidence used during takeover QA.
+design-evidence/
 
 # local env files
 **/.env

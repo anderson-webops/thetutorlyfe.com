@@ -1,9 +1,9 @@
-name: Validate direct production release
+name: Validate The Tutor Lyfe direct production release
 
 on:
   push:
     tags:
-      - "v2.*"
+      - "v*"
 
 permissions:
   contents: read

@@ -4,17 +4,20 @@ Audit date: 2026-08-02
 
 ## Boundary and result
 
-The review covered the Nuxt frontend, Express API, Netlify adapter, listener and proxy trust, deployment workflows,
-dependency and native-package graph, and committed source history. This template intentionally has no identity, login,
-session, role, administrator, promotion, demotion, database, secret, or privileged mutation workflow. Its sole API
-resource is a public, uncached, read-only health signal.
+This historical review covered the inherited Nuxt frontend, Express API, Netlify adapter, listener and proxy trust,
+deployment workflows, dependency and native-package graph, and committed source history before the code became The Tutor
+Lyfe downstream site. At the audit date, the inherited baseline had no identity, login, session, role, administrator,
+promotion, demotion, database, secret, or privileged mutation workflow. Its sole API resource was a public, uncached,
+read-only health signal.
 
 No known npm vulnerability remains in either the full or production dependency graph. The root lockfile contains the
 required Linux ARM64 native optional packages, and the standalone API lockfile produces a runtime-only dependency tree.
-Any downstream application that adds protected data must implement authenticated, deny-by-default authorization at the
-backend boundary; frontend visibility and CORS are not authorization.
+The Tutor Lyfe adaptation adds a narrowly scoped public lead intake at `POST /api/leads`; this historical audit is not a
+claim that the later contact workflow was reviewed on 2026-08-02. The current boundary, controls, webhook handoff, and
+privacy requirements are documented in `docs/security-model.md`. Any future protected data must use authenticated,
+deny-by-default authorization at the backend boundary; frontend visibility and CORS are not authorization.
 
-## Findings remediated in v2.1.0
+## Inherited findings remediated in v2.1.0
 
 1. Self-hosted production still depended on Docker and Compose. Those files were removed. Static output now runs
    directly under Nginx and the API runs under a dedicated, unprivileged, capability-free systemd sandbox.

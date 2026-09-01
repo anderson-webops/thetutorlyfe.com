@@ -27,24 +27,30 @@
   back-end files follow the shared monorepo lint rules.
 - Prefer descriptive component and composable names. Use PascalCase for Vue components and camelCase for utility and
   composable exports.
-- Keep route-facing files in `app/pages` aligned with Nuxt’s file-based routing conventions.
+- Keep route-facing files in `src/pages` aligned with Nuxt’s file-based routing conventions.
 
 ## Testing & Verification
 
-- Run `npm run lint`, `npm run typecheck`, and `npm run build` before pushing template changes.
+- Run `npm run lint`, `npm run typecheck`, and `npm run build` before pushing site changes.
 - When changing API behavior, verify both the front-end call site and the Express route behavior together.
 - Keep browser API traffic same-origin at `/api`; deployment adapters must route that path to the Express app.
+- Keep tutoring lead details on the same-origin `POST /api/leads` path. The browser must never receive the configured
+  `LEAD_WEBHOOK_URL`, and tests must cover configured, unconfigured, invalid, and failed-delivery behavior.
+- Never restore or republish the former site's Google Apps Script source, spreadsheet identifier, notification address,
+  or public script endpoint. A takeover deployment needs a separately verified, owner-controlled lead destination.
 - Preserve both Docker-free production adapters: direct Nginx/systemd and Netlify. Do not compile and discard the
   backend in either production path.
-- Treat template breakage as high impact: small config changes can affect every downstream repo created from this
-  template.
+- Treat shared-template changes as high impact, but keep this repository's public content and deployment identity
+  specific to The Tutor Lyfe.
 
-## Template Workflow
+## Downstream Template Workflow
 
-- `origin` is the published template repo for this monorepo pattern.
-- `upstream` must continue to point to `antfu/vitesse-nuxt`.
-- Preserve the front-end/back-end workspace structure when evolving the template unless a deliberate template version
-  change is being made.
+- `origin` is the published `anderson-webops/thetutorlyfe.com` site repository.
+- `upstream` is `anderson-webops/vitesse-nuxt-template`, the maintained full-stack base for this site.
+- The template repository, rather than this downstream site, maintains the direct relationship to
+  `antfu/vitesse-nuxt`.
+- Preserve the front-end/back-end workspace structure and review upstream template changes deliberately. Do not
+  force-mirror template history over site-specific content or deployment configuration.
 
 ## Agent Delivery Workflow
 

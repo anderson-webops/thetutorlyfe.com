@@ -7,7 +7,7 @@ describe('Netlify API adapter', () => {
   it('runs the same Express health route through the function boundary', async () => {
     const event = {
       body: null,
-      headers: { host: 'template.example' },
+      headers: { host: 'thetutorlyfe.com' },
       httpMethod: 'GET',
       isBase64Encoded: false,
       multiValueHeaders: {},
@@ -15,7 +15,7 @@ describe('Netlify API adapter', () => {
       path: '/api/health',
       queryStringParameters: null,
       rawQuery: '',
-      rawUrl: 'https://template.example/api/health',
+      rawUrl: 'https://thetutorlyfe.com/api/health',
       requestContext: {
         identity: { sourceIp: '127.0.0.1' },
       },

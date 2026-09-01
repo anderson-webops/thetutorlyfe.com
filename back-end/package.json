@@ -1,8 +1,8 @@
 {
-	"name": "back-end",
-	"version": "2.1.0",
+	"name": "thetutorlyfe-api",
+	"version": "1.0.0",
 	"private": true,
-	"description": "Minimal Express API for the vitesse-nuxt monorepo template.",
+	"description": "Same-origin health and lead-delivery API for The Tutor Lyfe.",
 	"type": "module",
 	"packageManager": "npm@12.0.2",
 	"engines": {

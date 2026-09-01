@@ -1,8 +1,19 @@
 import request from 'supertest'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import { createApp } from '../src/app.js'
 import { readServerConfig } from '../src/server-config.js'
+
+const validLead = {
+  email: 'parent@example.com',
+  grade: '5th Grade',
+  message: 'Fractions are the main challenge.',
+  parentName: 'Jane Smith',
+  phone: '(555) 123-4567',
+  preferred: 'Weekday evenings',
+  studentName: 'Alex',
+  subject: 'Fractions & Decimals',
+}
 
 describe('API security contract', () => {
   it('serves a minimal, uncached health response with security headers', async () => {
@@ -32,11 +43,81 @@ describe('API security contract', () => {
     expect(response.headers.allow).toBe('GET, HEAD, OPTIONS')
   })
 
+  it('reserves POST exclusively for the bounded lead endpoint', async () => {
+    const response = await request(createApp()).get('/api/leads').expect(405)
+
+    expect(response.body).toEqual({ error: 'method_not_allowed' })
+    expect(response.headers.allow).toBe('POST, OPTIONS')
+  })
+
   it('answers preflight-like requests without granting CORS access', async () => {
     const response = await request(createApp()).options('/api/health').expect(204)
 
     expect(response.headers.allow).toBe('GET, HEAD, OPTIONS')
     expect(response.headers['access-control-allow-origin']).toBeUndefined()
+  })
+
+  it('advertises the lead endpoint method without granting cross-origin access', async () => {
+    const response = await request(createApp()).options('/api/leads').expect(204)
+
+    expect(response.headers.allow).toBe('POST, OPTIONS')
+    expect(response.headers['access-control-allow-origin']).toBeUndefined()
+  })
+
+  it('rejects invalid lead data before consulting a destination', async () => {
+    const response = await request(createApp()).post('/api/leads').send({ ...validLead, email: 'invalid' }).expect(400)
+
+    expect(response.body).toEqual({ error: 'invalid_request' })
+  })
+
+  it('rejects malformed JSON without exposing parser details', async () => {
+    const response = await request(createApp())
+      .post('/api/leads')
+      .set('Content-Type', 'application/json')
+      .send('{"parentName":')
+      .expect(400)
+
+    expect(response.body).toEqual({ error: 'invalid_request' })
+  })
+
+  it('fails closed when the owner-controlled lead destination is not configured', async () => {
+    const response = await request(createApp()).post('/api/leads').send(validLead).expect(503)
+
+    expect(response.body).toEqual({ error: 'lead_destination_unconfigured' })
+  })
+
+  it('forwards only validated lead fields to the configured HTTPS destination', async () => {
+    const fetchImpl = vi.fn(async (_input: string | URL | Request, _init?: RequestInit) => new Response(null, { status: 204 }))
+    const app = createApp({
+      fetchImpl: fetchImpl as typeof fetch,
+      leadWebhookUrl: 'https://leads.example/collect',
+    })
+
+    await request(app).post('/api/leads').send({ ...validLead, ignored: 'not forwarded' }).expect(202, { ok: true })
+
+    expect(fetchImpl).toHaveBeenCalledOnce()
+    const [url, init] = fetchImpl.mock.calls[0]!
+    expect(url).toBe('https://leads.example/collect')
+    expect(init?.method).toBe('POST')
+    expect(init?.redirect).toBe('error')
+    expect(init?.body).toBeInstanceOf(URLSearchParams)
+
+    const body = init?.body as URLSearchParams
+    expect(body.get('parentName')).toBe(validLead.parentName)
+    expect(body.get('grade')).toBe(validLead.grade)
+    expect(body.get('source')).toBe('thetutorlyfe website')
+    expect(body.get('submittedAt')).toMatch(/^\d{4}-\d{2}-\d{2}T/)
+    expect(body.has('ignored')).toBe(false)
+  })
+
+  it('does not report success when the lead destination rejects delivery', async () => {
+    const fetchImpl = vi.fn(async (_input: string | URL | Request, _init?: RequestInit) => new Response(null, { status: 500 }))
+    const app = createApp({
+      fetchImpl: fetchImpl as typeof fetch,
+      leadWebhookUrl: 'https://leads.example/collect',
+    })
+
+    await request(app).post('/api/leads').send(validLead).expect(502, { error: 'lead_delivery_failed' })
   })
 
   it('does not expose the former mutable page-view endpoint', async () => {
@@ -50,6 +131,8 @@ describe('API security contract', () => {
   it('rejects unsafe proxy-hop configuration', () => {
     expect(() => createApp({ trustProxyHops: -1 })).toThrow(RangeError)
     expect(() => createApp({ trustProxyHops: 3 })).toThrow(RangeError)
+    expect(() => createApp({ leadWebhookUrl: 'http://leads.example/collect' })).toThrow(RangeError)
+    expect(() => createApp({ leadWebhookUrl: 'https://user:secret@leads.example/collect' })).toThrow(RangeError)
   })
 
   it('keeps the standalone API on loopback and bounds listener settings', () => {

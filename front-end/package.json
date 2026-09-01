@@ -1,9 +1,9 @@
 {
-  "name": "front-end",
+  "name": "thetutorlyfe-frontend",
   "type": "module",
-  "version": "2.1.0",
+  "version": "1.0.0",
   "private": true,
-  "description": "Static Nuxt frontend for the Vitesse full-stack template.",
+  "description": "Static Nuxt frontend for The Tutor Lyfe.",
   "author": "Jacob Anderson",
   "license": "MIT",
   "keywords": [],
