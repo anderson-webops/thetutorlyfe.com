@@ -20,6 +20,7 @@ env:
 
 jobs:
   validate:
+    name: Validate source and deployment output
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -34,10 +35,23 @@ jobs:
           cache-dependency-path: package-lock.json
 
       - name: Align npm with the repository policy
+        # Node 24.18.1 does not bundle the required security-patched npm 12.0.2.
+        # zizmor: ignore[adhoc-packages]
         run: |
           npm install --global "npm@${NPM_VERSION}" --allow-scripts=npm
           node --version
           npm --version
+
+      - name: Prepare isolated promotion regression tools
+        # Ubuntu runners do not guarantee the required user-namespace test tool.
+        # zizmor: ignore[adhoc-packages]
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends bubblewrap apparmor
+          if test -d /sys/kernel/security/apparmor; then
+            printf 'abi <abi/4.0>,\ninclude <tunables/global>\nprofile tutorlyfe-promotion-tests /usr/bin/bwrap flags=(unconfined) {\n  userns,\n}\n' | sudo tee /etc/apparmor.d/tutorlyfe-promotion-tests >/dev/null
+            sudo apparmor_parser -r /etc/apparmor.d/tutorlyfe-promotion-tests
+          fi
 
       - name: Install locked dependencies
         run: npm ci --include=optional --strict-allow-scripts
@@ -51,6 +65,9 @@ jobs:
 
       - name: Validate source and deployment output
         run: npm run validate
+
+      - name: Exercise protected promotion and rollback
+        run: npm run test:promotion
 
       - name: Run accessibility smoke checks
         run: npm run a11y

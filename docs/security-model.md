@@ -5,7 +5,8 @@
 The Tutor Lyfe is a public information site with no identity system, login, session, role, administrator, promotion,
 demotion, or privileged administration workflow. Its API has two deliberate public resources:
 
-- `GET /api/health` is a minimal liveness signal.
+- `GET` or `HEAD` on `/healthz`, `/api/healthz`, or legacy `/api/health` is a minimal liveness signal.
+- `GET` or `HEAD` on `/readyz` or `/api/readyz` is a minimal dependency-aware readiness signal.
 - `POST /api/leads` accepts a prospective customer's contact request and hands it to an operator-controlled webhook.
 
 The lead route is an unauthenticated intake endpoint, not an authorization mechanism. It handles personal contact
@@ -43,18 +44,29 @@ the Netlify server-side environment. It must never appear in Nuxt public runtime
 - The health route accepts only `GET`, `HEAD`, and `OPTIONS`; the lead route accepts only `POST` and `OPTIONS`.
 - Contact JSON is limited to `16kb`, required fields and allowed selections are checked, strings have explicit maximum
   lengths, and malformed email or phone values are rejected.
-- The lead route has a narrow per-client submission limit in addition to the general API rate limit.
-- Outbound webhook requests use a bounded timeout, and API errors do not include submitted fields or destination details.
-- The health response contains no process start time, version, environment, or secret metadata and is never cached.
+- The lead route has a narrow per-client submission limit in addition to the general API rate limit. Both limiters use
+  fixed-cardinality stores; excess identities share a strict overflow bucket instead of allocating unbounded state.
+- No more than 16 webhook deliveries run concurrently in an application process. Outbound requests use a bounded
+  timeout, provider bodies are canceled without logging them, and API errors do not include submitted fields or
+  destination details. Netlify also enforces an edge lead limit by client IP and domain.
+- Liveness and readiness responses contain only `{ "ok": true }` or `{ "ok": false }`; they disclose no cookies,
+  redirects, authentication state, process metrics, host information, environment, database names, provider details,
+  or secrets and are never cached. Readiness checks configuration and draining state without sending a provider message.
 - Helmet supplies response hardening headers; Nginx, Netlify, and generated Nuxt output add browser-facing
   defense-in-depth headers and CSP.
 - Proxy trust is set explicitly by each deployment adapter rather than globally trusting forwarded headers.
-- Listener ports, proxy-hop counts, server request durations, keep-alive durations, and shutdown durations are bounded.
+- Listener ports, proxy-hop counts, server request durations, keep-alive durations, shutdown durations, and direct
+  server connections are bounded.
 - Production source maps are disabled.
 - The direct API is loopback-only on port `3006` and runs as the unprivileged `thetutorlyfe` account in a
   capability-free systemd service with a read-only system view; Nginx is the only public listener.
 - npm optional dependencies and Linux ARM64 native lock entries are checked, while unreviewed dependency install scripts
   fail installation.
+- A closed runtime manifest binds every accepted file, required module, production dependency, release identity, source
+  commit, and archive digest. The exact unpacked and copied runtime is tested without source, development packages,
+  secrets, or provider access.
+- Privileged promotion executes only a versioned root-owned helper and verifier. Candidates and rollbacks are root-owned
+  immutable data; the unprivileged service/build account cannot supply root-executed code or alter the active tree.
 
 ## Requirements for future protected workflows
 

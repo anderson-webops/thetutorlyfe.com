@@ -74,6 +74,7 @@ async function submitLead(event: SubmitEvent) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(15_000),
     })
 
     if (!response.ok)
@@ -207,7 +208,7 @@ useScrollReveal()
             {{ formState === 'sending' ? 'Sending…' : 'Send My Request →' }}
           </button>
           <p class="form-note">
-            By submitting, you agree to be contacted about tutoring. We'll never share your details.
+            By submitting, you agree to be contacted about tutoring. We'll use your details only to respond about tutoring.
           </p>
 
           <div

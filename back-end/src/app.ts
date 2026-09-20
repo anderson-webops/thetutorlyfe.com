@@ -2,6 +2,8 @@ import express from 'express'
 import { rateLimit } from 'express-rate-limit'
 import helmet from 'helmet'
 
+import { BoundedRateStore } from './boundedRateStore.js'
+
 const readOnlyMethods = ['GET', 'HEAD', 'OPTIONS'] as const
 const leadMethods = ['POST', 'OPTIONS'] as const
 
@@ -41,7 +43,10 @@ interface LeadPayload {
 
 export interface AppOptions {
   fetchImpl?: typeof fetch
+  isReady?: () => boolean
+  isStopping?: () => boolean
   leadWebhookUrl?: string
+  maxConcurrentLeadDeliveries?: number
   trustProxyHops?: number
 }
 
@@ -59,7 +64,14 @@ function parseWebhookUrl(rawValue: string | undefined) {
   if (!value)
     return undefined
 
-  const url = new URL(value)
+  let url: URL
+  try {
+    url = new URL(value)
+  }
+  catch {
+    throw new RangeError('LEAD_WEBHOOK_URL must be a valid HTTPS URL without embedded credentials')
+  }
+
   if (url.protocol !== 'https:' || url.username || url.password)
     throw new RangeError('LEAD_WEBHOOK_URL must be an HTTPS URL without embedded credentials')
 
@@ -138,9 +150,13 @@ export function createApp(options: AppOptions = {}) {
   const trustProxyHops = options.trustProxyHops ?? 0
   const leadWebhookUrl = parseWebhookUrl(options.leadWebhookUrl ?? process.env.LEAD_WEBHOOK_URL)
   const fetchImpl = options.fetchImpl ?? fetch
+  const maxConcurrentLeadDeliveries = options.maxConcurrentLeadDeliveries ?? 16
   validateTrustProxyHops(trustProxyHops)
+  if (!Number.isSafeInteger(maxConcurrentLeadDeliveries) || maxConcurrentLeadDeliveries < 1 || maxConcurrentLeadDeliveries > 128)
+    throw new RangeError('maxConcurrentLeadDeliveries must be an integer between 1 and 128')
 
   const app = express()
+  let inFlightLeadDeliveries = 0
 
   app.disable('etag')
   app.disable('x-powered-by')
@@ -166,6 +182,45 @@ export function createApp(options: AppOptions = {}) {
     xFrameOptions: { action: 'deny' },
   }))
 
+  app.use((_request, response, next) => {
+    response.set('Cache-Control', 'no-store')
+    next()
+  })
+
+  const stopping = options.isStopping ?? (() => false)
+  const ready = options.isReady ?? (() => Boolean(leadWebhookUrl))
+  const probe = (liveness: boolean): express.RequestHandler => (request, response) => {
+    let ok = liveness
+    if (!liveness) {
+      try {
+        ok = !stopping() && ready()
+      }
+      catch {
+        ok = false
+      }
+    }
+
+    response.status(ok ? 200 : 503)
+    return request.method === 'HEAD' ? response.end() : response.json({ ok })
+  }
+
+  for (const route of ['/healthz', '/api/healthz', '/api/health']) {
+    app.head(route, probe(true))
+    app.get(route, probe(true))
+  }
+  for (const route of ['/readyz', '/api/readyz']) {
+    app.head(route, probe(false))
+    app.get(route, probe(false))
+  }
+
+  app.use((_request, response, next) => {
+    if (stopping()) {
+      response.set('Retry-After', '5').status(503).json({ error: 'service_stopping' })
+      return
+    }
+    next()
+  })
+
   app.use('/api', (request, response, next) => {
     const allowedMethods = methodsForApiPath(request.path)
     const allowHeader = allowedMethods.join(', ')
@@ -187,14 +242,10 @@ export function createApp(options: AppOptions = {}) {
     legacyHeaders: false,
     limit: 300,
     passOnStoreError: false,
-    skip: request => request.path === '/health',
     standardHeaders: 'draft-8',
+    store: new BoundedRateStore(),
     windowMs: 60_000,
   }))
-
-  app.get('/api/health', (_request, response) => {
-    response.set('Cache-Control', 'no-store').json({ ok: true })
-  })
 
   app.post(
     '/api/leads',
@@ -203,6 +254,7 @@ export function createApp(options: AppOptions = {}) {
       limit: 6,
       passOnStoreError: false,
       standardHeaders: 'draft-8',
+      store: new BoundedRateStore(),
       windowMs: 15 * 60_000,
     }),
     express.json({ limit: '16kb', strict: true }),
@@ -218,8 +270,15 @@ export function createApp(options: AppOptions = {}) {
         return
       }
 
+      if (inFlightLeadDeliveries >= maxConcurrentLeadDeliveries) {
+        response.set('Retry-After', '5').status(503).json({ error: 'lead_delivery_busy' })
+        return
+      }
+
+      inFlightLeadDeliveries += 1
+      let webhookResponse: Response | undefined
       try {
-        const webhookResponse = await fetchImpl(leadWebhookUrl, {
+        webhookResponse = await fetchImpl(leadWebhookUrl, {
           body: serializeLead(lead),
           headers: {
             'content-type': 'application/x-www-form-urlencoded;charset=UTF-8',
@@ -239,6 +298,15 @@ export function createApp(options: AppOptions = {}) {
       }
       catch {
         response.status(502).json({ error: 'lead_delivery_failed' })
+      }
+      finally {
+        try {
+          await webhookResponse?.body?.cancel()
+        }
+        catch {
+          // A consumed or closed provider response still releases this slot.
+        }
+        inFlightLeadDeliveries -= 1
       }
     },
   )
@@ -261,9 +329,10 @@ export function createApp(options: AppOptions = {}) {
       error !== null
       && typeof error === 'object'
       && 'status' in error
-      && error.status === 400
+      && (error.status === 400 || error.status === 413)
     ) {
-      response.status(400).json({ error: 'invalid_request' })
+      const status = error.status
+      response.status(status).json({ error: status === 413 ? 'request_too_large' : 'invalid_request' })
       return
     }
 

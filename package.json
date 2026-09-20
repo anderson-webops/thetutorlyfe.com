@@ -1,7 +1,7 @@
 {
 	"name": "thetutorlyfe.com",
 	"type": "module",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"private": true,
 	"packageManager": "npm@12.0.2",
 	"engines": {
@@ -31,7 +31,10 @@
 		"lint": "npm run lint:root && npm run -w front-end lint && npm run -w back-end lint",
 		"lint-fix": "eslint \"*.{js,ts,mjs,cjs}\" scripts netlify --fix && npm run -w front-end lint-fix && npm run -w back-end lint-fix",
 		"typecheck": "npm run -w front-end typecheck && npm run -w back-end typecheck && tsc -p netlify/tsconfig.json --noEmit",
-		"test": "npm run -w back-end test",
+		"test": "npm run -w back-end test && npm run test:artifact",
+		"test:artifact": "python3 -B -m unittest discover -s scripts -p test_runtime_artifact.py -v",
+		"test:promotion": "bash scripts/test-promotion-recovery.sh",
+		"package:runtime": "bash scripts/package-runtime.sh",
 		"clean": "node scripts/clean.mjs",
 		"deps:check": "taze",
 		"a11y": "node scripts/a11y-smoke.mjs",
@@ -51,7 +54,7 @@
 	"devDependencies": {
 		"@antfu/eslint-config": "^9.2.0",
 		"@netlify/functions": "^5.3.0",
-		"@types/node": "^24.13.3",
+		"@types/node": "^24.13.6",
 		"@typescript-eslint/types": "^8.65.0",
 		"@unocss/eslint-plugin": "^66.7.5",
 		"axe-core": "^4.11.4",
@@ -64,7 +67,7 @@
 	},
 	"allowScripts": {
 		"simple-git-hooks": false,
-		"esbuild@0.28.1": true,
+		"esbuild@0.28.2": true,
 		"fsevents@2.3.3": true,
 		"unrs-resolver@1.12.2": true
 	},
@@ -72,8 +75,11 @@
 		"pre-commit": "npm run lint"
 	},
 	"overrides": {
+		"devalue": "5.9.4",
+		"nanoid@^3": "3.3.18",
+		"qs": "6.16.0",
 		"glob": "13.0.6",
-		"esbuild": "^0.28.1",
+		"esbuild": "^0.28.2",
 		"js-yaml": "4.3.2",
 		"launch-editor": {
 			".": "2.14.1",
@@ -85,15 +91,14 @@
 		},
 		"vite": {
 			".": "^8.1.0",
-			"esbuild": "^0.28.1"
+			"esbuild": "^0.28.2"
 		},
 		"nitropack": "2.13.4",
 		"simple-git": "3.36.0",
 		"brace-expansion": "5.0.9",
 		"fast-uri": "3.1.6",
-		"nanoid": "3.3.18",
 		"postcss": "8.5.24",
-		"svgo": "4.0.2",
+		"svgo": "4.1.0",
 		"tar": "7.5.22",
 		"valibot": "1.4.2"
 	}

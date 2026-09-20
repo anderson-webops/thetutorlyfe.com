@@ -13,6 +13,10 @@
 - Do not leave completed site work uncommitted or unpushed.
 - Preserve the Docker-free direct Nginx/systemd and Netlify adapters so every production path deploys the Express
   backend instead of silently discarding it.
+- Preserve dependency-aware GET/HEAD `/healthz` and `/readyz` probes, bounded rate state, the lead-delivery concurrency
+  limit, and the direct listener connection cap. Probes must not expose private details or send provider messages.
+- Direct releases use a closed Linux ARM64 runtime artifact and a versioned root-owned promotion helper. Never execute
+  candidate-controlled scripts as root or let the service/build account mutate accepted releases and rollbacks.
 - Keep contact submissions same-origin at `POST /api/leads`. Configure the destination only through the server-side
   `LEAD_WEBHOOK_URL`; never expose it in the Nuxt bundle or commit it.
 - The previous Google Apps Script backend, source project, and ownership access were not included in the site takeover.

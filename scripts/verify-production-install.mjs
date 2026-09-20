@@ -16,6 +16,7 @@ for (const removedPath of ['node_modules', 'front-end/node_modules', 'front-end/
   await assert.rejects(access(path.join(repositoryRoot, removedPath)), undefined, `${removedPath} must be absent from production`)
 
 for (const requiredPath of [
+  'back-end/dist/boundedRateStore.js',
   'back-end/dist/server.js',
   'front-end/.output/public/index.html',
   'front-end/.output/public/release.json',

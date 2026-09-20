@@ -13,6 +13,29 @@ external_node_modules = ["express", "express-rate-limit", "helmet", "serverless-
 node_bundler = "esbuild"
 
 [[redirects]]
+from = "/healthz"
+to = "/.netlify/functions/api/healthz"
+status = 200
+force = true
+
+[[redirects]]
+from = "/readyz"
+to = "/.netlify/functions/api/readyz"
+status = 200
+force = true
+
+[[redirects]]
+from = "/api/leads"
+to = "/.netlify/functions/api/leads"
+status = 200
+force = true
+
+  [redirects.rate_limit]
+  window_limit = 6
+  window_size = 180
+  aggregate_by = ["ip", "domain"]
+
+[[redirects]]
 from = "/api/*"
 to = "/.netlify/functions/api/:splat"
 status = 200

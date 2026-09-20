@@ -1,6 +1,6 @@
 {
 	"name": "thetutorlyfe-api",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"private": true,
 	"description": "Same-origin health and lead-delivery API for The Tutor Lyfe.",
 	"type": "module",
@@ -28,17 +28,21 @@
 	"dependencies": {
 		"dotenv": "^17.4.2",
 		"express": "^5.2.1",
-		"express-rate-limit": "^8.6.1",
+		"express-rate-limit": "^8.7.0",
 		"helmet": "^8.1.0"
+	},
+	"overrides": {
+		"nanoid@^3": "3.3.18",
+		"qs": "6.16.0"
 	},
 	"devDependencies": {
 		"@types/express": "^5.0.6",
-		"@types/node": "^24.13.3",
+		"@types/node": "^24.13.6",
 		"@types/supertest": "^7.2.1",
-		"globals": "^17.8.0",
+		"globals": "^17.12.0",
 		"supertest": "^7.2.2",
-		"tsx": "^4.23.4",
-		"typescript-eslint": "^8.65.0",
-		"vitest": "^4.1.10"
+		"tsx": "^4.23.15",
+		"typescript-eslint": "^8.70.0",
+		"vitest": "^4.1.11"
 	}
 }

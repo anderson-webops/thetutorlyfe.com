@@ -1,0 +1,295 @@
+"""Run the actual trusted promoter under synthetic root with fake external services."""
+
+import fcntl
+import hashlib
+import importlib.util
+import json
+import os
+from pathlib import Path
+import shutil
+import stat
+import subprocess
+import sys
+import tarfile
+
+assert os.geteuid() == 0 and not Path("/srv").exists()
+SOURCE = Path("/source")
+RELEASE_MARKER = ".tutorlyfe-release-prepared.json"
+STUB = r'''#!/usr/bin/python3
+import os, pathlib, signal, sys
+root = pathlib.Path(os.environ['FIXTURE_ROOT'])
+mode = os.environ['FIXTURE_MODE']
+name = pathlib.Path(sys.argv[0]).name
+args = sys.argv[1:]
+current = root / 'current'
+candidate = current.is_symlink() and current.resolve().name == 'candidate'
+def once(key):
+    path = root / key
+    if path.exists(): return False
+    path.touch(); return True
+if name == 'sleep': sys.exit(0)
+if name == 'systemctl':
+    if args[0] == 'is-active': sys.exit(0 if current.is_symlink() else 3)
+    if args[0] == 'restart' and candidate and mode == 'interrupt' and once('interrupted'):
+        os.kill(os.getppid(), signal.SIGTERM)
+    if args[0] == 'restart' and candidate and mode == 'restart-failure' and once('restart-failed'): sys.exit(1)
+    if args[0] == 'restart' and candidate and mode == 'rollback-provenance-failure' and once('restart-failed'):
+        (root / 'releases/previous/runtime-manifest.json').write_text('{}')
+        sys.exit(1)
+    if args[0] == 'restart' and not candidate and mode == 'rollback-failure': sys.exit(1)
+    sys.exit(0)
+if name == 'nginx':
+    if '-t' in args and candidate and mode == 'nginx-failure' and once('nginx-failed'): sys.exit(1)
+    sys.exit(0)
+if name == 'curl':
+    if candidate and mode in ['bad-health', 'rollback-failure', 'first-failure']: sys.exit(22)
+    if candidate and mode == 'ipv6-failure' and '--ipv6' in args: sys.exit(22)
+    url = next(argument for argument in args if argument.startswith(('http://', 'https://')))
+    with (root / 'probes').open('a') as stream: stream.write(' '.join(args) + '\n')
+    if mode in ['alternate-port', 'custom-probes'] and '127.0.0.1:3006' in url: sys.exit(22)
+    if mode == 'wrong-service-readiness' and candidate and ':4006/' in url and url.endswith('/readyz'): sys.exit(22)
+    output = pathlib.Path(args[args.index('--output') + 1])
+    if '--write-out' in args:
+        if url.endswith(('/healthz', '/readyz')) and '-X' not in args: print('200', end='')
+        elif '-X' in args: print('405', end='')
+        else: print('404', end='')
+        sys.exit(0)
+    if url.endswith('/release.json') and candidate and mode == 'empty-public-identity':
+        output.write_text('{}')
+    elif url.endswith('/release.json'):
+        output.write_bytes((current / 'front-end/.output/public/release.json').read_bytes())
+    elif url.endswith(('/api/health', '/healthz', '/readyz', '/status', '/dependencies-ready')):
+        output.write_text('{"ok":true}')
+    else:
+        output.write_text('Synthetic Tutor Lyfe page')
+        pathlib.Path(args[args.index('--dump-header') + 1]).write_text(
+            "Content-Security-Policy: frame-ancestors 'none'\nX-Content-Type-Options: nosniff\nX-Frame-Options: DENY\n")
+    sys.exit(0)
+raise SystemExit('Unexpected fixture command')
+'''
+
+
+def setup(root):
+    root.mkdir(parents=True, mode=0o755)
+    control = root / "control"
+    for folder in ["scripts", "deploy"]:
+        shutil.copytree(SOURCE / folder, control / folder)
+    spec = importlib.util.spec_from_file_location("artifact", control / "scripts/runtime-artifact.py")
+    artifact = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(artifact)
+    (control / "package.json").write_text(json.dumps({"version": "1.0.1"}))
+
+    candidate = root / "releases/candidate"
+    candidate.mkdir(parents=True)
+    contract = json.loads(artifact.CONTRACT.read_text())
+    for name in contract["required"]:
+        path = candidate / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("Synthetic runtime file\n")
+    package = {"version": "1.0.1"}
+    backend = {**package, "type": "module", "dependencies": {"express": "5.2.1"}}
+    express = candidate / "back-end/node_modules/express/package.json"
+    express.parent.mkdir(parents=True)
+    express.write_text(json.dumps({"version": "5.2.1"}))
+    locks = {"version": "1.0.1", "packages": {"": backend, "node_modules/express": {"version": "5.2.1"}}}
+    for name, value in [
+        ("package.json", package),
+        ("front-end/package.json", package),
+        ("back-end/package.json", backend),
+        ("package-lock.json", locks),
+        ("back-end/package-lock.json", locks),
+    ]:
+        (candidate / name).write_text(json.dumps(value))
+    metadata = {"release": "v1.0.1", "commitSha": "a" * 40, "deployedAt": "2026-09-20T00:00:00Z"}
+    for name in [artifact.RELEASE_MARKER, "front-end/.output/public/release.json"]:
+        (candidate / name).write_text(json.dumps(metadata))
+    (candidate / "back-end/dist/app.js").write_text(
+        "import { writeFileSync } from 'node:fs'; writeFileSync('/fixture/ROOT_CODE_EXECUTED','bad')")
+    manifest = {"format": 1, "commit": "a" * 40, "contract": contract, "files": artifact.inventory(candidate)}
+    (candidate / artifact.MANIFEST).write_text(json.dumps(manifest))
+    archive = root / "approved.tar.gz"
+    with tarfile.open(archive, "w:gz") as target:
+        for path in candidate.rglob("*"):
+            if path.is_file():
+                target.add(path, arcname=path.relative_to(candidate).as_posix(), recursive=False)
+    digest = hashlib.sha256(archive.read_bytes()).hexdigest()
+
+    previous = root / "releases/previous"
+    shutil.copytree(candidate, previous)
+    previous_package = {"version": "1.0.0"}
+    previous_backend = {**previous_package, "type": "module", "dependencies": {"express": "5.2.1"}}
+    previous_locks = {
+        "version": "1.0.0",
+        "packages": {"": previous_backend, "node_modules/express": {"version": "5.2.1"}},
+    }
+    for name, value in [
+        ("package.json", previous_package),
+        ("front-end/package.json", previous_package),
+        ("back-end/package.json", previous_backend),
+        ("package-lock.json", previous_locks),
+        ("back-end/package-lock.json", previous_locks),
+    ]:
+        (previous / name).write_text(json.dumps(value))
+    previous_metadata = {**metadata, "release": "v1.0.0", "commitSha": "b" * 40}
+    for name in [artifact.RELEASE_MARKER, "front-end/.output/public/release.json"]:
+        (previous / name).write_text(json.dumps(previous_metadata))
+    previous_manifest = {
+        "format": 1,
+        "commit": "b" * 40,
+        "contract": contract,
+        "files": artifact.inventory(previous),
+    }
+    (previous / artifact.MANIFEST).write_text(json.dumps(previous_manifest))
+    (root / "current").symlink_to(previous)
+    recovery = root / ".deployment-recovery"
+    recovery.mkdir(mode=0o700)
+    accepted = recovery / "accepted"
+    accepted.mkdir(mode=0o700)
+    record_key = hashlib.sha256(str(previous).encode()).hexdigest()
+    previous_record = accepted / f"{record_key}.json"
+    previous_record.write_text(json.dumps({
+        "format": 1,
+        "candidate": str(previous),
+        "archiveSha256": hashlib.sha256(b"previous-approved-archive").hexdigest(),
+        "commit": "b" * 40,
+        "manifestSha256": hashlib.sha256((previous / artifact.MANIFEST).read_bytes()).hexdigest(),
+    }))
+    previous_record.chmod(0o600)
+    return control, candidate, previous, archive, digest, recovery, previous_record
+
+
+Path("/fixture/runtime").mkdir(parents=True)
+shutil.copy2("/runtime/node", "/fixture/runtime/node")
+Path("/usr/local/bin").mkdir(parents=True)
+for command_name in ["curl", "systemctl", "nginx", "sleep"]:
+    command = Path("/usr/local/bin") / command_name
+    command.write_text(STUB)
+    command.chmod(0o755)
+
+modes = [
+    "success", "bad-health", "ipv6-failure", "interrupt", "restart-failure", "nginx-failure",
+    "rollback-failure", "rollback-provenance-failure", "lock-contention", "invalid-current", "tampered-artifact", "mutable-helper",
+    "mutable-parent", "mutable-candidate", "symlink-module", "wrong-digest", "first-success",
+    "first-failure", "mutable-archive", "mutable-contract", "mutable-previous", "previous-is-parent",
+    "invalid-previous-identity", "missing-previous-acceptance", "tampered-previous-acceptance",
+    "mutable-previous-acceptance", "empty-public-identity", "ambiguous-runtime-promoter",
+    "ambiguous-runtime-installer", "alternate-port", "wrong-service-readiness",
+    "mismatched-readiness-origin", "custom-probes",
+]
+if len(sys.argv) > 1 and sys.argv[1] != "all":
+    assert sys.argv[1] in modes, "Unknown isolated regression case"
+    modes = [sys.argv[1]]
+
+for mode in modes:
+    root = Path("/fixture") / mode
+    control, candidate, previous, archive, digest, recovery, previous_record = setup(root)
+    if mode.startswith("first-"):
+        (root / "current").unlink()
+    if mode == "invalid-current":
+        (root / "current").unlink()
+        (root / "current").mkdir()
+    if mode == "tampered-artifact":
+        (candidate / "back-end/dist/server.js").write_text("tampered")
+    if mode == "mutable-helper":
+        (control / "deploy/systemd/promote-release.sh").chmod(0o777)
+    if mode == "mutable-parent":
+        root.chmod(0o777)
+    if mode == "mutable-candidate":
+        (candidate / "back-end/dist/server.js").chmod(0o666)
+    if mode == "symlink-module":
+        path = candidate / "back-end/dist/server.js"
+        path.unlink()
+        path.symlink_to("/etc/passwd")
+    if mode == "wrong-digest":
+        digest = "0" * 64
+    if mode == "mutable-archive":
+        archive.chmod(0o666)
+    if mode == "mutable-contract":
+        (control / "deploy/runtime-artifact.json").chmod(0o666)
+    if mode == "mutable-previous":
+        (previous / "back-end/dist/app.js").chmod(0o666)
+    if mode == "previous-is-parent":
+        (root / "current").unlink()
+        (root / "current").symlink_to(root / "releases")
+        shutil.copyfile(previous / RELEASE_MARKER, root / "releases" / RELEASE_MARKER)
+        previous = root / "releases"
+    if mode == "invalid-previous-identity":
+        (previous / RELEASE_MARKER).write_text("{}")
+    if mode == "missing-previous-acceptance":
+        previous_record.unlink()
+    if mode == "tampered-previous-acceptance":
+        value = json.loads(previous_record.read_text())
+        value["manifestSha256"] = "0" * 64
+        previous_record.write_text(json.dumps(value))
+    if mode == "mutable-previous-acceptance":
+        previous_record.chmod(0o666)
+
+    held = None
+    if mode == "lock-contention":
+        held = (recovery / "promotion.lock").open("w")
+        fcntl.flock(held, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    env = {
+        **os.environ,
+        "NODE_BIN_DIR": "/fixture/runtime",
+        "PUBLIC_HOST": "thetutorlyfe.com",
+        "RELEASE_ROOT": str(root / "releases"),
+        "CURRENT_LINK": str(root / "current"),
+        "FIXTURE_ROOT": str(root),
+        "FIXTURE_MODE": mode,
+    }
+    command = [
+        "bash", str(control / "deploy/systemd/promote-release.sh"), str(candidate), str(archive), digest, "a" * 40,
+    ]
+    sentinel = root / "UNTRUSTED_RUNTIME_EXECUTED"
+    if mode.startswith("ambiguous-runtime-"):
+        (root / "protected/bin").mkdir(parents=True)
+        shutil.copy2("/runtime/node", root / "protected/bin/node")
+        (root / "build/subdir").mkdir(parents=True)
+        (root / "build/bin").mkdir()
+        (root / "protected/link").symlink_to(root / "build/subdir")
+        unsafe = root / "build/bin/node"
+        unsafe.write_text(f'#!/bin/sh\ntouch "{sentinel}"\nprintf "v24.18.1\\n"\n')
+        unsafe.chmod(0o755)
+        (root / "build").chmod(0o777)
+        env["NODE_BIN_DIR"] = str(root / "protected/link") + "/../bin"
+        if mode.endswith("-installer"):
+            command = ["bash", str(control / "deploy/systemd/install-service.sh")]
+    if mode in ["alternate-port", "wrong-service-readiness", "mismatched-readiness-origin", "custom-probes"]:
+        env["HEALTH_URL"] = "http://127.0.0.1:4006/api/health"
+    if mode == "mismatched-readiness-origin":
+        env["READINESS_URL"] = "http://127.0.0.1:3006/readyz"
+    if mode == "custom-probes":
+        env["HEALTH_URL"] = "http://127.0.0.1:4006/status"
+        env["READINESS_URL"] = "http://127.0.0.1:4006/dependencies-ready"
+    try:
+        result = subprocess.run(command, env=env, capture_output=True, text=True, timeout=15)
+    finally:
+        if held:
+            held.close()
+    evidence = result.stdout + result.stderr
+    success = mode in ["success", "first-success", "alternate-port", "custom-probes"]
+    assert not sentinel.exists(), (mode, "untrusted runtime executed as root")
+    assert (result.returncode == 0) == success, (mode, evidence)
+    assert not Path("/fixture/ROOT_CODE_EXECUTED").exists(), (mode, "candidate code executed as root")
+    if mode == "first-failure":
+        assert not (root / "current").exists(), evidence
+    elif mode == "rollback-provenance-failure":
+        assert (root / "current").resolve() == candidate, (mode, evidence)
+    elif mode != "invalid-current":
+        assert (root / "current").resolve() == (candidate if success else previous), (mode, evidence)
+    records = list(recovery.glob("promotion-????????"))
+    if mode in ["rollback-failure", "rollback-provenance-failure"]:
+        assert len(records) == 1 and "protected record retained" in evidence, evidence
+        assert stat.S_IMODE(records[0].stat().st_mode) == 0o600
+    else:
+        assert not records, (mode, evidence)
+    if mode == "interrupt":
+        assert result.returncode == 143 and (root / "interrupted").exists(), evidence
+    if success:
+        probes = (root / "probes").read_text()
+        assert "--ipv4" in probes and "--ipv6" in probes
+        assert "-X POST" not in probes and "--request POST" not in probes
+        assert ("/dependencies-ready" if mode == "custom-probes" else "/readyz") in probes
+        if mode in ["alternate-port", "custom-probes"]:
+            assert "127.0.0.1:3006" not in probes
+    print(json.dumps({"promotionRecovery": mode, "result": "passed"}), flush=True)

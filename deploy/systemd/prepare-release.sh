@@ -2,10 +2,10 @@
 set -euo pipefail
 
 system_path=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-node_bin_dir="${NODE_BIN_DIR:-/usr/bin}"
+node_bin_dir="${NODE_BIN_DIR:-/opt/node-24.18.1/bin}"
 if [[ "$node_bin_dir" != /* ]] || [[ ! -x "$node_bin_dir/node" ]] || [[ ! -x "$node_bin_dir/npm" ]]; then
-	echo "NODE_BIN_DIR must be an absolute directory containing executable node and npm binaries." >&2
-	exit 1
+  echo "NODE_BIN_DIR must be an absolute directory containing executable node and npm binaries." >&2
+  exit 1
 fi
 node_bin_dir_real="$(cd -- "$node_bin_dir" && pwd -P)"
 PATH="$node_bin_dir_real:$system_path"
@@ -14,75 +14,79 @@ export NUXT_TELEMETRY_DISABLED=1
 export PUPPETEER_SKIP_DOWNLOAD=true
 export SKIP_INSTALL_SIMPLE_GIT_HOOKS=1
 
-release_root="${RELEASE_ROOT:-/srv/thetutorlyfe.com/releases}"
-
+build_root="${BUILD_ROOT:-${RELEASE_ROOT:-/srv/thetutorlyfe.com/builds}}"
 if [[ $# -ne 1 ]]; then
-	echo "Usage: prepare-release.sh /srv/thetutorlyfe.com/releases/<release>" >&2
-	exit 2
+  echo "Usage: prepare-release.sh /srv/thetutorlyfe.com/builds/<release>" >&2
+  exit 2
 fi
 if [[ ${EUID:-$(id -u)} -eq 0 ]]; then
-	echo "Prepare releases as the unprivileged thetutorlyfe deployment user, not root." >&2
-	exit 1
+  echo "Prepare source as the unprivileged thetutorlyfe build user, not root." >&2
+  exit 1
 fi
 
-release_root_real="$(cd -- "$release_root" && pwd -P)"
+build_root_real="$(cd -- "$build_root" && pwd -P)"
 candidate="$(cd -- "$1" && pwd -P)"
 case "$candidate/" in
-	"$release_root_real/"*) ;;
-	*) echo "Candidate must resolve beneath $release_root_real: $candidate" >&2; exit 1 ;;
+  "$build_root_real/"*) ;;
+  *) echo "Candidate must resolve beneath $build_root_real: $candidate" >&2; exit 1 ;;
 esac
-if [[ "$candidate" == "$release_root_real" ]]; then
-	echo "Candidate must be a release checkout beneath, not equal to, $release_root_real." >&2
-	exit 1
+if [[ "$candidate" == "$build_root_real" ]]; then
+  echo "Candidate must be a source checkout beneath, not equal to, $build_root_real." >&2
+  exit 1
 fi
 if [[ ! -f "$candidate/package-lock.json" ]] || ! git -C "$candidate" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-	echo "Candidate must be a complete Git checkout with the committed root lockfile." >&2
-	exit 1
+  echo "Candidate must be a complete Git checkout with the committed root lockfile." >&2
+  exit 1
 fi
 if [[ -n "$(git -C "$candidate" status --porcelain)" ]]; then
-	echo "Candidate checkout must be clean before preparation." >&2
-	exit 1
+  echo "Candidate checkout must be clean before preparation." >&2
+  exit 1
 fi
 
 for environment_directory in "$candidate" "$candidate/front-end" "$candidate/back-end"; do
-	while IFS= read -r -d '' environment_file; do
-		if [[ "$(basename -- "$environment_file")" != ".env.example" ]]; then
-			echo "Release preparation refuses source-local environment files: $environment_file" >&2
-			exit 1
-		fi
-	done < <(find "$environment_directory" -maxdepth 1 -type f \( -name '.env' -o -name '.env.*' \) -print0)
+  while IFS= read -r -d '' environment_file; do
+    if [[ "$(basename -- "$environment_file")" != ".env.example" ]]; then
+      echo "Release preparation refuses source-local environment paths: $environment_file" >&2
+      exit 1
+    fi
+  done < <(find "$environment_directory" -maxdepth 1 \( -name '.env' -o -name '.env.*' \) -print0)
 done
 
-if [[ "$(node --version)" != "v24.18.1" || "$(npm --version)" != "12.0.2" ]]; then
-	echo "Preparation requires Node 24.18.1 and npm 12.0.2." >&2
-	exit 1
+if [[ "$(node --version)" != v24.18.1 || "$(npm --version)" != 12.0.2 ]]; then
+  echo "Preparation requires Node 24.18.1 and npm 12.0.2." >&2
+  exit 1
 fi
+case "$(git -C "$candidate" remote get-url origin)" in
+  git@github.com:anderson-webops/thetutorlyfe.com.git|https://github.com/anderson-webops/thetutorlyfe.com.git|https://github.com/anderson-webops/thetutorlyfe.com) ;;
+  *) echo 'origin must be the canonical The Tutor Lyfe repository.' >&2; exit 1 ;;
+esac
 
-git -C "$candidate" fetch --quiet origin main --tags
 git -C "$candidate" config --local --unset-all http.https://github.com/.extraheader 2>/dev/null || true
+if ! git -C "$candidate" show-ref --verify --quiet refs/remotes/origin/main; then
+  echo 'The caller must fetch origin/main and release tags before entering the credential-free preparation boundary.' >&2
+  exit 1
+fi
 TUTORLYFE_COMMIT_SHA="$(git -C "$candidate" rev-parse HEAD)"
-export TUTORLYFE_COMMIT_SHA
-TUTORLYFE_VERSION="$(node -p "require('$candidate/package.json').version")"
-export TUTORLYFE_VERSION
+TUTORLYFE_VERSION="$(node -p 'require(process.argv[1]).version' "$candidate/package.json")"
 export TUTORLYFE_RELEASE="v$TUTORLYFE_VERSION"
 TUTORLYFE_DEPLOYED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-export TUTORLYFE_DEPLOYED_AT
+export TUTORLYFE_COMMIT_SHA TUTORLYFE_VERSION TUTORLYFE_DEPLOYED_AT
 release_tag="$TUTORLYFE_RELEASE"
 
-if [[ "$(git -C "$candidate" cat-file -t "refs/tags/$release_tag" 2>/dev/null || true)" != "tag" ]]; then
-	echo "$release_tag must exist as an annotated release tag before preparation." >&2
-	exit 1
+if [[ "$(git -C "$candidate" cat-file -t "refs/tags/$release_tag" 2>/dev/null || true)" != tag ]]; then
+  echo "$release_tag must exist as an annotated release tag before preparation." >&2
+  exit 1
 fi
 if [[ "$(git -C "$candidate" rev-parse "$release_tag^{}")" != "$TUTORLYFE_COMMIT_SHA" ]]; then
-	echo "$release_tag must peel to the exact candidate revision." >&2
-	exit 1
+  echo "$release_tag must peel to the exact candidate revision." >&2
+  exit 1
 fi
 if [[ "$(git -C "$candidate" rev-parse origin/main)" != "$TUTORLYFE_COMMIT_SHA" ]]; then
-	echo "The release candidate must be the exact fetched origin/main revision." >&2
-	exit 1
+  echo "The release candidate must be the exact fetched origin/main revision." >&2
+  exit 1
 fi
 
-npm_cache="${NPM_CONFIG_CACHE:-$(dirname "$release_root_real")/shared/npm-cache}"
+npm_cache="${NPM_CONFIG_CACHE:-$(dirname "$build_root_real")/shared/npm-cache}"
 mkdir -p "$npm_cache"
 NPM_CONFIG_CACHE="$(cd -- "$npm_cache" && pwd -P)"
 export NPM_CONFIG_CACHE
@@ -106,4 +110,4 @@ node scripts/prune-direct-runtime.mjs
 node scripts/verify-production-install.mjs
 node scripts/direct-runtime-smoke.mjs
 
-echo "Prepared The Tutor Lyfe runtime $candidate at $TUTORLYFE_COMMIT_SHA."
+echo "Prepared The Tutor Lyfe source runtime $candidate at $TUTORLYFE_COMMIT_SHA. Promotion still requires the separately accepted protected artifact."

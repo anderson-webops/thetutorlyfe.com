@@ -40,6 +40,16 @@
   or public script endpoint. A takeover deployment needs a separately verified, owner-controlled lead destination.
 - Preserve both Docker-free production adapters: direct Nginx/systemd and Netlify. Do not compile and discard the
   backend in either production path.
+- Preserve the minimal GET/HEAD `/healthz` and `/readyz` contract and their `/api` aliases. Readiness must fail closed
+  when the lead destination is not validly configured or shutdown has started, and it must never send a real or
+  synthetic provider message outside an isolated test fixture.
+- Preserve the fixed-cardinality rate stores, outbound lead concurrency bound, direct connection cap, and Netlify edge
+  lead limit. Do not replace them with per-request unbounded maps or queues.
+- Treat `deploy/runtime-artifact.json` as the independent production contract. Test the exact unpacked and copied
+  artifact without source, development packages, secrets, or real providers before attaching it to a release.
+- Never run privileged promotion from a source checkout or build-owned tree. Root uses only the versioned helper beneath
+  `/usr/local/libexec/thetutorlyfe-release`; accepted candidates and rollbacks remain root-owned, non-writable, and bound
+  to a protected acceptance record. Never replace an existing release asset.
 - Treat shared-template changes as high impact, but keep this repository's public content and deployment identity
   specific to The Tutor Lyfe.
 

@@ -16,6 +16,48 @@ const validLead = {
 }
 
 describe('API security contract', () => {
+  it('provides minimal GET and HEAD probes and fails readiness closed', async () => {
+    let ready = true
+    let stopping = false
+    const app = createApp({
+      isReady: () => ready,
+      isStopping: () => stopping,
+      leadWebhookUrl: '',
+    })
+
+    for (const path of ['/healthz', '/readyz', '/api/healthz', '/api/readyz', '/api/health']) {
+      for (const method of ['get', 'head'] as const) {
+        const response = await request(app)[method](path).expect(200)
+        expect(response.headers['cache-control']).toBe('no-store')
+        expect(response.headers['set-cookie']).toBeUndefined()
+        expect(response.headers.location).toBeUndefined()
+        expect(response.headers['x-powered-by']).toBeUndefined()
+        if (method === 'get')
+          expect(response.body).toEqual({ ok: true })
+        else
+          expect(response.text).toBeUndefined()
+      }
+    }
+
+    ready = false
+    await request(app).get('/readyz').expect(503, { ok: false })
+    await request(app).head('/readyz').expect(503)
+    await request(app).get('/healthz').expect(200, { ok: true })
+    ready = true
+    stopping = true
+    await request(app).get('/api/readyz').expect(503, { ok: false })
+    await request(app).get('/api/healthz').expect(200, { ok: true })
+    await request(app).post('/api/leads').send(validLead).expect(503, { error: 'service_stopping' })
+
+    await request(createApp({ leadWebhookUrl: '' })).get('/readyz').expect(503, { ok: false })
+    await request(createApp({
+      isReady: () => {
+        throw new Error('private dependency detail')
+      },
+      leadWebhookUrl: '',
+    })).get('/readyz').expect(503, { ok: false })
+  })
+
   it('serves a minimal, uncached health response with security headers', async () => {
     const response = await request(createApp()).get('/api/health').expect(200)
 
@@ -80,6 +122,15 @@ describe('API security contract', () => {
     expect(response.body).toEqual({ error: 'invalid_request' })
   })
 
+  it('rejects oversized JSON with a bounded generic response', async () => {
+    const response = await request(createApp())
+      .post('/api/leads')
+      .send({ ...validLead, message: 'x'.repeat(20_000) })
+      .expect(413)
+
+    expect(response.body).toEqual({ error: 'request_too_large' })
+  })
+
   it('fails closed when the owner-controlled lead destination is not configured', async () => {
     const response = await request(createApp()).post('/api/leads').send(validLead).expect(503)
 
@@ -120,6 +171,64 @@ describe('API security contract', () => {
     await request(app).post('/api/leads').send(validLead).expect(502, { error: 'lead_delivery_failed' })
   })
 
+  it('bounds aggregate outbound lead delivery and releases capacity', async () => {
+    let releaseDeliveries!: () => void
+    let reportStarted!: () => void
+    let started = 0
+    const deliveryGate = new Promise<void>((resolve) => {
+      releaseDeliveries = resolve
+    })
+    const bothStarted = new Promise<void>((resolve) => {
+      reportStarted = resolve
+    })
+    const fetchImpl = vi.fn(async () => {
+      started += 1
+      if (started === 2)
+        reportStarted()
+      await deliveryGate
+      return new Response(null, { status: 204 })
+    })
+    const app = createApp({
+      fetchImpl: fetchImpl as typeof fetch,
+      leadWebhookUrl: 'https://leads.example/collect',
+      maxConcurrentLeadDeliveries: 2,
+    })
+
+    const first = request(app).post('/api/leads').send(validLead)
+    const second = request(app).post('/api/leads').send(validLead)
+    const firstResult = first.then(response => response)
+    const secondResult = second.then(response => response)
+    await bothStarted
+
+    const overloaded = await request(app).post('/api/leads').send(validLead).expect(503)
+    expect(overloaded.body).toEqual({ error: 'lead_delivery_busy' })
+    expect(overloaded.headers['retry-after']).toBe('5')
+
+    releaseDeliveries()
+    const completed = await Promise.all([firstResult, secondResult])
+    expect(completed.map(response => response.status)).toEqual([202, 202])
+    await request(app).post('/api/leads').send(validLead).expect(202, { ok: true })
+  })
+
+  it('cancels unread provider bodies before releasing a delivery slot', async () => {
+    let canceled = false
+    const fetchImpl = vi.fn(async () => new Response(new ReadableStream({
+      cancel() {
+        canceled = true
+      },
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode('provider detail that must not be retained'))
+      },
+    }), { status: 500 }))
+    const app = createApp({
+      fetchImpl: fetchImpl as typeof fetch,
+      leadWebhookUrl: 'https://leads.example/collect',
+    })
+
+    await request(app).post('/api/leads').send(validLead).expect(502, { error: 'lead_delivery_failed' })
+    expect(canceled).toBe(true)
+  })
+
   it('does not expose the former mutable page-view endpoint', async () => {
     await request(createApp()).get('/api/pageview').expect(404, { error: 'not_found' })
   })
@@ -133,6 +242,22 @@ describe('API security contract', () => {
     expect(() => createApp({ trustProxyHops: 3 })).toThrow(RangeError)
     expect(() => createApp({ leadWebhookUrl: 'http://leads.example/collect' })).toThrow(RangeError)
     expect(() => createApp({ leadWebhookUrl: 'https://user:secret@leads.example/collect' })).toThrow(RangeError)
+    expect(() => createApp({ maxConcurrentLeadDeliveries: 0 })).toThrow(RangeError)
+  })
+
+  it('does not retain a malformed secret-bearing webhook value in the configuration error', () => {
+    const sentinel = 'https://[private-token.example/path?token=do-not-log'
+    let thrown: unknown
+    try {
+      createApp({ leadWebhookUrl: sentinel })
+    }
+    catch (error) {
+      thrown = error
+    }
+
+    expect(thrown).toBeInstanceOf(RangeError)
+    expect(String(thrown)).toContain('LEAD_WEBHOOK_URL')
+    expect(String(thrown)).not.toContain(sentinel)
   })
 
   it('keeps the standalone API on loopback and bounds listener settings', () => {

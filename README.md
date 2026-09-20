@@ -37,12 +37,17 @@ npm run validate
 npm run a11y
 ```
 
-`npm run validate` checks Linux ARM64 lockfile entries, linting, type safety, API behavior, both production builds, and
-the expected deployment artifacts.
+`npm run validate` checks Linux ARM64 lockfile entries, linting, type safety, API behavior, portable artifact-integrity
+regressions, both production builds, and the expected deployment adapters. The tagged release workflow additionally
+builds and tests the exact unpacked runtime on Linux ARM64 in an isolated namespace.
 
 ## API contract
 
-- `GET /api/health` returns `{ "ok": true }` with no-store caching.
+- `GET` and `HEAD` on `/healthz`, `/api/healthz`, and legacy `/api/health` return the minimal liveness response
+  `{ "ok": true }` with `Cache-Control: no-store`.
+- `GET` and `HEAD` on `/readyz` and `/api/readyz` return `200 { "ok": true }` only while the API is accepting work and
+  the server-only lead destination is validly configured. They return `503 { "ok": false }` while unconfigured or
+  draining. Readiness never sends a lead or probes the provider by mutation.
 - `POST /api/leads` validates and rate limits contact requests, then forwards them to the server-only
   `LEAD_WEBHOOK_URL`. A successful destination response returns `202` to the browser.
 - `HEAD` and `OPTIONS` are permitted where appropriate. Unsupported methods return `405`, and unknown routes return
@@ -51,7 +56,9 @@ the expected deployment artifacts.
 The lead payload contains `parentName`, `studentName`, `email`, `phone`, `grade`, `subject`, `preferred`, and `message`.
 The API adds `source` and `submittedAt`, sends the handoff as `application/x-www-form-urlencoded`, and does not persist a
 local copy. The webhook must use HTTPS without embedded URL credentials and must answer directly without a redirect. If
-it is unconfigured or does not return a successful response, the API does not report the submission as accepted.
+it is unconfigured or does not return a successful response, the API does not report the submission as accepted. Rate
+state is cardinality-bounded, no more than 16 lead deliveries run concurrently in one process, provider responses are
+released without retaining their bodies, and the direct listener accepts at most 128 simultaneous connections.
 
 There are no accounts, sessions, roles, or administrative workflows. The public lead route handles personal contact
 information, so future changes must preserve strict validation, narrow rate limiting, bounded payloads, and server-only
@@ -72,18 +79,30 @@ lead end to end. See `deploy/README.md` for the production handoff.
 
 ## Direct production deployment
 
-Production does not use Docker or Compose. Nginx serves the generated Nuxt files and proxies `/api` to a loopback-only
-Node process running as the unprivileged `thetutorlyfe` account under a hardened systemd service. Release preparation
-requires the exact annotated tag and fetched `origin/main`, performs clean development and production-only installs,
-audits and package-provenance checks, code/browser/accessibility validation, and a real direct runtime smoke test.
-Promotion selects the prepared release atomically and rolls back automatically unless health, exact release identity,
-strict headers, and route policy pass over both local IPv4 and IPv6 TLS paths.
+Production does not use Docker or Compose. Nginx serves the generated Nuxt files and proxies the API and exact root
+probe routes to a loopback-only Node process running as the unprivileged `thetutorlyfe` account under a hardened systemd
+service. Unprivileged source builds live beneath `/srv/thetutorlyfe.com/builds`; immutable, root-owned accepted releases
+live beneath `/srv/thetutorlyfe.com/releases`. The build account cannot mutate `current`, a candidate, or a rollback.
+
+The tagged workflow creates a closed SHA-256 inventory, tests the exact unpacked artifact without the source checkout,
+development dependencies, secrets, or external networking, verifies a copied tree, deliberately rejects a missing
+runtime module, and publishes the accepted Linux ARM64 archive, checksum, manifest, and acceptance receipt. Root invokes
+only a versioned helper installed from a separately reviewed root-owned checkout. Promotion binds the candidate to the
+published archive digest and source commit. A protected external record keeps that provenance available for future
+rollback verification, and workflow reruns cannot replace published assets. Promotion then rolls back on health,
+readiness, identity, edge-policy, restart, or interruption failure.
 
 ```bash
-sudo deploy/systemd/install-service.sh
-# Install deploy/nginx/thetutorlyfe.com.server.conf inside the certificate-covered TLS server.
-deploy/systemd/prepare-release.sh /srv/thetutorlyfe.com/releases/<release>
-sudo PUBLIC_HOST=thetutorlyfe.com deploy/systemd/promote-release.sh /srv/thetutorlyfe.com/releases/<release>
+# Run only from a separately reviewed root-owned administrative checkout.
+sudo NODE_BIN_DIR=/opt/node-24.18.1/bin deploy/systemd/install-service.sh
+
+# Build verification is unprivileged and separate from accepted releases.
+deploy/systemd/prepare-release.sh /srv/thetutorlyfe.com/builds/<release>
+
+# The installed helper accepts only a protected candidate and the reviewed release record.
+sudo PUBLIC_HOST=thetutorlyfe.com \
+  /usr/local/libexec/thetutorlyfe-release/<version>/deploy/systemd/promote-release.sh \
+  /srv/thetutorlyfe.com/releases/<release> /root/reviewed/<archive>.tar.gz <sha256> <commit>
 ```
 
 See `deploy/README.md` for the exact rollout, contact configuration, and rollback contract. The direct API remains bound
@@ -91,10 +110,12 @@ to port `3006` on loopback and never binds a public interface.
 
 ## Netlify deployment
 
-Netlify generates the Nuxt frontend and bundles the same Express app as `netlify/functions/api.ts`. The first rewrite in
-`netlify.toml` sends `/api/*` to that function before the static SPA fallback. Node and npm versions are pinned in the
-repository and in Netlify configuration. Set `LEAD_WEBHOOK_URL` in the Netlify site environment before accepting live
-contact submissions.
+Netlify generates the Nuxt frontend and bundles the same Express app as `netlify/functions/api.ts`. Exact rewrites send
+the root probes and `/api/leads` to the function before the general `/api/*` and SPA fallbacks. The lead rewrite has a
+Netlify edge limit aggregated by client IP and domain; the in-process bounds remain defense in depth for each warm
+function instance. Strict site-wide in-flight concurrency still depends on the platform's deployment controls. Node and
+npm versions are pinned in the repository and in Netlify configuration. Set `LEAD_WEBHOOK_URL` in the Netlify site
+environment before accepting live contact submissions.
 
 ## Configuration
 
