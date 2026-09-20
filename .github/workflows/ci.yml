@@ -47,7 +47,7 @@ jobs:
         # zizmor: ignore[adhoc-packages]
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends bubblewrap apparmor
+          sudo apt-get install -y --no-install-recommends bubblewrap apparmor python3-minimal
           if test -d /sys/kernel/security/apparmor; then
             printf 'abi <abi/4.0>,\ninclude <tunables/global>\nprofile tutorlyfe-promotion-tests /usr/bin/bwrap flags=(unconfined) {\n  userns,\n}\n' | sudo tee /etc/apparmor.d/tutorlyfe-promotion-tests >/dev/null
             sudo apparmor_parser -r /etc/apparmor.d/tutorlyfe-promotion-tests
