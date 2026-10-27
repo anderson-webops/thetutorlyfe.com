@@ -22,7 +22,6 @@ useScrollReveal()
           </NuxtLink> / Not Found
         </div>
         <h1>Page not found</h1>
-        <p>We couldn't find the page you're looking for.</p>
       </div>
     </section>
 
@@ -32,7 +31,6 @@ useScrollReveal()
           <div class="icon">
             🔎
           </div>
-          <h2>Let's get you back on track</h2>
           <p>The page may have moved, or the address may have been typed incorrectly.</p>
           <div class="hero-actions not-found-actions">
             <NuxtLink class="btn btn-primary" to="/">

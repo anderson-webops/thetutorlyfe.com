@@ -7,10 +7,10 @@ const formState = ref<FormState>('idle')
 
 const statusMessage = computed(() => {
   if (formState.value === 'success')
-    return '🎉 Thank you! Your request has been sent. We\'ll be in touch shortly about your free intro session.'
+    return 'Thank you! Your request has been sent. We\'ll be in touch shortly.'
 
   if (formState.value === 'error')
-    return '😔 Sorry, something went wrong. Please try again, or email us directly.'
+    return 'Sorry, something went wrong. Please try again.'
 
   return ''
 })
@@ -110,15 +110,13 @@ useScrollReveal()
           </NuxtLink> / Contact
         </div>
         <h1>Book your free intro session</h1>
-        <p>Fill out the quick form below and we'll reach out to set up your student's free, no-pressure intro session. Online, anytime.</p>
       </div>
     </section>
 
     <section class="section">
       <div class="container form-wrap">
         <div class="form-side reveal">
-          <h2>Let's get started 🚀</h2>
-          <p>Tell us a little about your student and what you're looking for. The more we know, the better we can help — and your first intro session is always free.</p>
+          <h2>Tutoring inquiry</h2>
           <ul class="contact-info">
             <li>
               <span class="ic">📍</span>
@@ -201,7 +199,7 @@ useScrollReveal()
 
           <div class="field">
             <label for="message">Anything else we should know?</label>
-            <textarea id="message" name="message" maxlength="2000" placeholder="Tell us about your student's goals, what they're struggling with, or any questions you have..." />
+            <textarea id="message" name="message" maxlength="2000" placeholder="Goals, current challenges, or questions" />
           </div>
 
           <button id="submitBtn" type="submit" class="btn btn-primary btn-lg" :disabled="formState === 'sending'">
