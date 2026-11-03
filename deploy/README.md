@@ -60,7 +60,7 @@ and direct runtime startup/shutdown tests.
 
 The Linux ARM64 release job then:
 
-1. Builds from the exact clean tag with Node 24.18.1 and npm 12.0.2.
+1. Builds from the exact clean tag with Node 26.13.0 and npm 12.2.1.
 2. Copies only the declared compiled API, static output, source manifests, and independent production lock.
 3. Installs only the standalone backend production graph and rejects development or unrelated packages.
 4. Creates a closed per-file SHA-256 and size inventory bound to the source commit.
@@ -80,7 +80,7 @@ The complete contract is in `deploy/runtime-artifact.json` and `docs/runtime-art
 On a fresh or separately reviewed compatible installation:
 
 ```bash
-sudo NODE_BIN_DIR=/opt/node-24.18.1/bin \
+sudo NODE_BIN_DIR=/opt/node-26.13.0/bin \
   /root/reviewed/thetutorlyfe.com/deploy/systemd/install-service.sh
 ```
 

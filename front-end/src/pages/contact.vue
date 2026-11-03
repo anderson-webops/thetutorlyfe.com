@@ -24,7 +24,9 @@ function clearCustomValidity(event: Event) {
 
 function readFormValue(data: FormData, key: string) {
   const value = data.get(key)
-  return typeof value === 'string' ? value.trim() : ''
+  return typeof value === 'string'
+    ? value.trim()
+    : ''
 }
 
 async function submitLead(event: SubmitEvent) {
@@ -39,8 +41,11 @@ async function submitLead(event: SubmitEvent) {
   for (const fieldName of ['parentName', 'email', 'phone']) {
     const field = form.elements.namedItem(fieldName)
 
-    if (field instanceof HTMLInputElement)
-      field.setCustomValidity(field.value.trim() ? '' : 'Please fill out this field.')
+    if (field instanceof HTMLInputElement) {
+      field.setCustomValidity(field.value.trim()
+        ? ''
+        : 'Please fill out this field.')
+    }
   }
 
   const phoneField = form.elements.namedItem('phone')

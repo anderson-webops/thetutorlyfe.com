@@ -6,8 +6,8 @@ root=$(cd -- "$(dirname -- "$0")/.." && pwd)
 cd -- "$root"
 test "$(uname -s)" = Linux
 test "$(uname -m)" = aarch64
-test "$(node --version)" = v24.18.1
-test "$(npm --version)" = 12.0.2
+test "$(node --version)" = v26.13.0
+test "$(npm --version)" = 12.2.1
 test -z "$(git status --porcelain)"
 commit=$(git rev-parse HEAD)
 output=$(realpath "${1:?Pass an empty output directory under .ai-work/runs}")
@@ -28,6 +28,8 @@ asset_prefix="thetutorlyfe-com-$TUTORLYFE_RELEASE-${commit:0:12}"
 node scripts/write-release-metadata.mjs
 cp package.json package-lock.json .tutorlyfe-release-prepared.json "$stage/"
 cp back-end/package.json back-end/package-lock.json "$stage/back-end/"
+mkdir -p "$stage/back-end/vendor"
+cp back-end/vendor/qs-6.17.2-webops.1.tgz "$stage/back-end/vendor/"
 cp front-end/package.json "$stage/front-end/"
 cp -R back-end/dist "$stage/back-end/"
 cp -R front-end/.output/public "$stage/front-end/.output/"
@@ -37,6 +39,8 @@ npm audit --prefix "$stage/back-end" --omit=dev --audit-level=low
 npm audit --prefix "$stage/back-end" --audit-level=low
 npm audit signatures --prefix "$stage/back-end"
 npm ls --prefix "$stage/back-end" --omit=dev --all > "$output/$asset_prefix-dependency-tree.txt"
+rm -- "$stage/back-end/vendor/qs-6.17.2-webops.1.tgz"
+rmdir -- "$stage/back-end/vendor"
 rm -rf -- "$stage/back-end/node_modules/.bin"
 
 archive="$output/$asset_prefix-linux-arm64.tar.gz"
@@ -45,8 +49,11 @@ sha=$(sha256sum "$archive" | cut -d ' ' -f 1)
 printf '%s  %s\n' "$sha" "$(basename "$archive")" > "$output/$asset_prefix-SHA256SUMS"
 cp "$stage/runtime-manifest.json" "$output/$asset_prefix-runtime-manifest.json"
 
-mkdir "$output/unpacked"
-python3 -B scripts/runtime-artifact.py unpack "$output/unpacked" --archive "$archive" --sha256 "$sha" --commit "$commit"
+mkdir -m 700 "$output/unpacked"
+(
+  umask 077
+  python3 -B scripts/runtime-artifact.py unpack "$output/unpacked" --archive "$archive" --sha256 "$sha" --commit "$commit"
+)
 bash scripts/test-unpacked-artifact.sh "$output/unpacked"
 cp -R "$output/unpacked" "$output/copied"
 python3 -B scripts/runtime-artifact.py verify "$output/copied" --archive "$archive" --sha256 "$sha" --commit "$commit"

@@ -11,8 +11,8 @@ production, and Netlify each route that path to the Express application without 
 
 ## Supported toolchain
 
-- Node.js `24.18.1`
-- npm `12.0.2`
+- Node.js `26.13.0`
+- npm `12.2.1`
 
 Use the repository root for all package operations. The committed npm lockfile includes optional native packages for
 Linux ARM64 glibc and musl deployments, and npm rejects unreviewed dependency install scripts. npm uses the nested
@@ -94,7 +94,7 @@ readiness, identity, edge-policy, restart, or interruption failure.
 
 ```bash
 # Run only from a separately reviewed root-owned administrative checkout.
-sudo NODE_BIN_DIR=/opt/node-24.18.1/bin deploy/systemd/install-service.sh
+sudo NODE_BIN_DIR=/opt/node-26.13.0/bin deploy/systemd/install-service.sh
 
 # Build verification is unprivileged and separate from accepted releases.
 deploy/systemd/prepare-release.sh /srv/thetutorlyfe.com/builds/<release>

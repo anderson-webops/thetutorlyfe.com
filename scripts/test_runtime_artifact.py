@@ -1,11 +1,15 @@
+import copy
 import importlib.util
 import json
+import os
 from pathlib import Path
+import stat
 import subprocess
 import sys
 import tarfile
 import tempfile
 import unittest
+from unittest.mock import patch
 
 spec = importlib.util.spec_from_file_location("artifact", Path(__file__).with_name("runtime-artifact.py"))
 artifact = importlib.util.module_from_spec(spec)
@@ -49,6 +53,25 @@ class RuntimeArtifactTests(unittest.TestCase):
 
     def test_valid_tree(self):
         artifact.validate(self.root, self.manifest())
+
+    def test_deployment_requirements_are_bound_and_validated(self):
+        deployment = self.manifest()["contract"]["deployment"]
+        self.assertEqual(deployment["applicationId"], "thetutorlyfe.com")
+        self.assertEqual(deployment["schemaVersion"], 1)
+        for field, value in [
+            ("applicationId", "vitesse-nuxt-template"),
+            ("requiredHostCapabilities", []),
+            ("probes", {}),
+            ("rollback", "unverified"),
+        ]:
+            with self.subTest(field=field):
+                changed = copy.deepcopy(self.contract)
+                changed["deployment"][field] = value
+                path = self.root.parent / "altered-contract.json"
+                path.write_text(json.dumps(changed))
+                with patch.object(artifact, "CONTRACT", path):
+                    with self.assertRaisesRegex(ValueError, "deployment compatibility contract"):
+                        artifact.validate(self.root, self.manifest())
 
     def test_hash_tampering(self):
         manifest = self.manifest()
@@ -125,8 +148,10 @@ class RuntimeArtifactTests(unittest.TestCase):
             output = Path(temporary)
             archive = output / "runtime.tar.gz"
             unpacked = output / "unpacked"
-            unpacked.mkdir()
+            unpacked.mkdir(mode=0o700)
             command = [sys.executable, "-B", str(Path(artifact.__file__))]
+            (self.root / "back-end/dist/server.js").chmod(0o751)
+            (self.root / "package-lock.json").chmod(0o600)
             (self.root / artifact.MANIFEST).write_text(json.dumps(self.manifest()))
             with tarfile.open(archive, "w:gz") as target:
                 for path in self.root.rglob("*"):
@@ -134,7 +159,15 @@ class RuntimeArtifactTests(unittest.TestCase):
                         target.add(path, arcname=path.relative_to(self.root).as_posix())
             sha = artifact.digest(archive)
             arguments = ["--archive", str(archive), "--sha256", sha, "--commit", "a" * 40]
-            subprocess.run([*command, "unpack", str(unpacked), *arguments], check=True, capture_output=True)
+            subprocess.run([*command, "unpack", str(unpacked), *arguments], check=True, capture_output=True, umask=0o077)
+            for directory in [unpacked, *(path for path in unpacked.rglob("*") if path.is_dir())]:
+                self.assertEqual(stat.S_IMODE(directory.stat().st_mode), 0o755)
+                self.assertEqual(directory.stat().st_uid, os.geteuid())
+            with tarfile.open(archive, "r:gz") as source:
+                for member in source.getmembers():
+                    target = unpacked / member.name
+                    self.assertEqual(stat.S_IMODE(target.stat().st_mode), member.mode & 0o755)
+                    self.assertEqual(target.stat().st_uid, os.geteuid())
             subprocess.run([*command, "verify", str(unpacked), *arguments], check=True, capture_output=True)
             (unpacked / "back-end/dist/boundedRateStore.js").unlink()
             manifest = json.loads((unpacked / artifact.MANIFEST).read_text())

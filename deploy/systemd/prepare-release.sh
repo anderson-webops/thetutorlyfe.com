@@ -2,7 +2,7 @@
 set -euo pipefail
 
 system_path=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-node_bin_dir="${NODE_BIN_DIR:-/opt/node-24.18.1/bin}"
+node_bin_dir="${NODE_BIN_DIR:-/opt/node-26.13.0/bin}"
 if [[ "$node_bin_dir" != /* ]] || [[ ! -x "$node_bin_dir/node" ]] || [[ ! -x "$node_bin_dir/npm" ]]; then
   echo "NODE_BIN_DIR must be an absolute directory containing executable node and npm binaries." >&2
   exit 1
@@ -52,8 +52,8 @@ for environment_directory in "$candidate" "$candidate/front-end" "$candidate/bac
   done < <(find "$environment_directory" -maxdepth 1 \( -name '.env' -o -name '.env.*' \) -print0)
 done
 
-if [[ "$(node --version)" != v24.18.1 || "$(npm --version)" != 12.0.2 ]]; then
-  echo "Preparation requires Node 24.18.1 and npm 12.0.2." >&2
+if [[ "$(node --version)" != v26.13.0 || "$(npm --version)" != 12.2.1 ]]; then
+  echo "Preparation requires Node 26.13.0 and npm 12.2.1." >&2
   exit 1
 fi
 case "$(git -C "$candidate" remote get-url origin)" in

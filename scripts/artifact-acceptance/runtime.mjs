@@ -6,9 +6,15 @@ import process from 'node:process'
 
 assert.equal(process.platform, 'linux')
 assert.equal(process.arch, 'arm64')
-assert.equal(process.version, 'v24.18.1')
+assert.equal(process.version, 'v26.13.0')
 assert.equal(process.cwd(), '/app')
-for (const absent of ['/home/builder', '/mnt/input', '/app/node_modules', '/app/back-end/src', '/app/.git'])
+for (const absent of [
+  '/home/builder',
+  '/mnt/input',
+  '/app/node_modules',
+  '/app/back-end/src',
+  '/app/.git',
+])
   await assert.rejects(access(absent))
 
 if (process.argv[2] === 'missing-module') {
@@ -54,12 +60,17 @@ else {
     for (const value of [false, true, false, true]) {
       ready = value
       for (const method of ['GET', 'HEAD']) {
-        const response = await fetch(`${origin}/readyz`, { method, signal: AbortSignal.timeout(2_000) })
+        const response = await fetch(`${origin}/readyz`, {
+          method,
+          signal: AbortSignal.timeout(2_000),
+        })
         assert.equal(response.status, value ? 200 : 503)
         assert.equal(response.headers.get('cache-control'), 'no-store')
         assert.equal(response.headers.get('set-cookie'), null)
         assert.equal(response.headers.get('location'), null)
-        assert.equal(await response.text(), method === 'HEAD' ? '' : JSON.stringify({ ok: value }))
+        assert.equal(await response.text(), method === 'HEAD'
+          ? ''
+          : JSON.stringify({ ok: value }))
       }
     }
 
@@ -83,7 +94,9 @@ else {
     assert.equal(forwarded, 1)
   }
   finally {
-    await new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve()))
+    await new Promise((resolve, reject) => server.close(error => error
+      ? reject(error)
+      : resolve()))
   }
 
   for (let run = 0; run < 2; run++) {

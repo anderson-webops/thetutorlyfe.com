@@ -42,7 +42,7 @@ Treat this as a standing instruction for this site.
 
 ## Build, Test, and Development Commands
 
-- `npm ci` installs the committed workspace dependency graph. Use Node 24.18.1 and npm 12.0.2 at the repo root; do not mix package managers for normal
+- `npm ci` installs the committed workspace dependency graph. Use Node 26.13.0 and npm 12.2.1 at the repo root; do not mix package managers for normal
   development.
 - `npm run dev` starts the Nuxt front-end on port `3333`.
 - `npm run server` starts the Express API with `tsx watch` on port `3006`.

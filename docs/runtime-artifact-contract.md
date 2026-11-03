@@ -4,13 +4,17 @@
 production dependency root, runtime, generated clients, native bindings, writable state, private configuration, and host
 topology. Empty arrays are reviewed declarations, not omissions to fill implicitly.
 
+Its versioned deployment section binds The Tutor Lyfe identity, required host capabilities, read-only health and release
+identity probes, migration mode, and retained-artifact recovery. It is a source requirement, not evidence that a host has
+accepted or activated the release.
+
 The current direct runtime has one compiled Express entrypoint, no modules outside `back-end/dist`, no generated client,
 no native production binding, no database, no queue, and no writable application state. Logs remain in the existing
 service journal. `LEAD_WEBHOOK_URL` remains in the protected host environment and must never enter the archive.
 
 ## Acceptance invariants
 
-- Build only from a clean exact annotated release commit on Linux ARM64 with Node 24.18.1 and npm 12.0.2.
+- Build only from a clean exact annotated release commit on Linux ARM64 with Node 26.13.0 and npm 12.2.1.
 - Install the standalone backend from `back-end/package-lock.json` with no fallback and no development packages.
 - Inventory every file by path, size, and SHA-256; independently require critical files so an incomplete self-authored
   inventory cannot pass.

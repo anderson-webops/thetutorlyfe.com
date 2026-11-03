@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 """Reject mutable administrative inputs. Run only from a trusted installation."""
-
 import argparse
 import os
 from pathlib import Path

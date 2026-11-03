@@ -18,6 +18,41 @@ MANIFEST = "runtime-manifest.json"
 RELEASE_MARKER = ".tutorlyfe-release-prepared.json"
 
 
+def validate_deployment_contract(contract):
+    deployment = contract.get("deployment")
+    required_capabilities = {
+        "artifact-only-promotion-v1",
+        "verified-source-and-payload-v1",
+        "protected-immutable-staging-v1",
+        "retained-artifact-rollback-v1",
+        "version-aware-readiness-v1",
+        "dual-stack-release-identity-v1",
+    }
+    if (
+        not isinstance(deployment, dict)
+        or set(deployment) != {
+            "schemaVersion", "applicationId", "artifactFormat", "requiredHostCapabilities",
+            "probes", "migrations", "rollback", "hostControlled",
+        }
+        or deployment["schemaVersion"] != 1
+        or deployment["applicationId"] != "thetutorlyfe.com"
+        or deployment["artifactFormat"] != "vitesse-direct-runtime-v1"
+        or not isinstance(deployment["requiredHostCapabilities"], list)
+        or not all(isinstance(capability, str) for capability in deployment["requiredHostCapabilities"])
+        or len(deployment["requiredHostCapabilities"]) != len(required_capabilities)
+        or set(deployment["requiredHostCapabilities"]) != required_capabilities
+        or deployment["probes"] != {
+            "apiHealth": {"path": "/api/health", "methods": ["GET", "HEAD"], "success": 200},
+            "apiReadiness": {"path": "/api/readyz", "methods": ["GET", "HEAD"], "success": 200, "failure": 503},
+            "staticIdentity": {"path": "/release.json", "field": "commitSha", "addressFamilies": ["ipv4", "ipv6"]},
+        }
+        or deployment["migrations"] != "none"
+        or deployment["rollback"] != "verify-retained-artifact-and-identity"
+        or deployment["hostControlled"] != ["service-user", "listener", "reverse-proxy", "protected-environment"]
+    ):
+        raise ValueError("unsupported or incomplete deployment compatibility contract")
+
+
 def digest(path):
     checksum = hashlib.sha256()
     with path.open("rb") as stream:
@@ -107,6 +142,8 @@ def validate(root, manifest, trusted_manifest=False):
     contract = manifest.get("contract")
     if manifest.get("format") != 1 or not isinstance(contract, dict):
         raise ValueError("artifact does not match the independently trusted runtime contract")
+    if not trusted_manifest:
+        validate_deployment_contract(current_contract)
     if not trusted_manifest and contract != current_contract:
         raise ValueError("artifact does not match the independently trusted runtime contract")
     if not re.fullmatch(r"[0-9a-f]{40}", manifest.get("commit", "")):
@@ -209,6 +246,10 @@ def main():
         manifest = validate(root, json.loads((root / MANIFEST).read_text()))
         if manifest["commit"] != args.commit:
             raise ValueError("artifact source identity mismatch")
+        for directory in root.rglob("*"):
+            if directory.is_dir():
+                directory.chmod(0o755)
+        root.chmod(0o755)
         print(json.dumps({"unpacked": True, "commit": manifest["commit"], "files": len(manifest["files"])}))
     elif args.operation == "pack":
         if platform.system() != "Linux" or platform.machine() != "aarch64":

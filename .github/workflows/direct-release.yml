@@ -27,14 +27,13 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 24.18.1
+          node-version: 26.13.0
           package-manager-cache: false
 
       - name: Pin npm without checkout credentials
-        # Node 24.18.1 does not bundle the required security-patched npm 12.0.2.
         # zizmor: ignore[adhoc-packages]
         run: |
-          npm install --global npm@12.0.2 --allow-scripts=npm
+          npm install --global npm@12.2.1 --allow-scripts=npm
           node --version
           npm --version
 
@@ -66,14 +65,13 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 24.18.1
+          node-version: 26.13.0
           package-manager-cache: false
 
       - name: Prepare isolated artifact tools
-        # Node 24.18.1 does not bundle the required security-patched npm 12.0.2.
         # zizmor: ignore[adhoc-packages]
         run: |
-          npm install --global npm@12.0.2 --allow-scripts=npm
+          npm install --global npm@12.2.1 --allow-scripts=npm
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends bubblewrap apparmor python3-minimal
           if test -d /sys/kernel/security/apparmor; then

@@ -14,13 +14,13 @@ fi
 
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 source_root="$(cd -- "$script_dir/../.." && pwd -P)"
-node_bin_dir="${NODE_BIN_DIR:-/opt/node-24.18.1/bin}"
+node_bin_dir="${NODE_BIN_DIR:-/opt/node-26.13.0/bin}"
 /usr/bin/python3 -I "$script_dir/trusted-paths.py" --tree "$script_dir" \
   "$source_root/scripts/runtime-artifact.py" "$source_root/deploy/runtime-artifact.json" \
   "$source_root/package.json" "$source_root/scripts/write-release-metadata.mjs" \
   "$node_bin_dir/node"
-if [[ "$("$node_bin_dir/node" --version)" != v24.18.1 ]]; then
-  echo 'NODE_BIN_DIR must select Node 24.18.1 without replacing the host-wide runtime.' >&2
+if [[ "$("$node_bin_dir/node" --version)" != v26.13.0 ]]; then
+  echo 'NODE_BIN_DIR must select Node 26.13.0 without replacing the host-wide runtime.' >&2
   exit 1
 fi
 
@@ -37,7 +37,7 @@ if [[ -e "$helper_root" || -L "$helper_root" ]]; then
 fi
 
 unit=/etc/systemd/system/thetutorlyfe-api.service
-if [[ ! -e "$unit" && "$node_bin_dir" != /opt/node-24.18.1/bin ]]; then
+if [[ ! -e "$unit" && "$node_bin_dir" != /opt/node-26.13.0/bin ]]; then
   echo 'Review the unit ExecStart for this alternate runtime before installing the service.' >&2
   exit 1
 fi

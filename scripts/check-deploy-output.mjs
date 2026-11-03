@@ -84,7 +84,7 @@ assert(/^User=thetutorlyfe$/m.test(directService), 'Direct API service must use 
 assert(/^WorkingDirectory=\/srv\/thetutorlyfe\.com\/current$/m.test(directService), 'Direct API service must use The Tutor Lyfe release root')
 assert(/^EnvironmentFile=-\/etc\/thetutorlyfe\.com\/api\.env$/m.test(directService), 'Direct API service must load its server-only configuration')
 assert(/^Environment=HOST=127\.0\.0\.1$/m.test(directService), 'Direct API service must bind only to loopback')
-assert(/^ExecStart=\/opt\/node-24\.18\.1\/bin\/node back-end\/dist\/server\.js$/m.test(directService), 'Direct API service must use the approved isolated Node runtime')
+assert(/^ExecStart=\/opt\/node-26\.13\.0\/bin\/node back-end\/dist\/server\.js$/m.test(directService), 'Direct API service must use the approved isolated Node runtime')
 assert(/^NoNewPrivileges=true$/m.test(directService), 'Direct API service must deny privilege escalation')
 assert(/^ProtectSystem=strict$/m.test(directService), 'Direct API service must have a read-only system view')
 assert(!/0\.0\.0\.0|docker/i.test(directService), 'Direct API service must not depend on a container listener')
@@ -126,6 +126,9 @@ assert(/from = "\/healthz"/.test(netlifyConfiguration) && /from = "\/readyz"/.te
 
 const contract = JSON.parse(artifactContract)
 assert(contract.runtime?.os === 'linux' && contract.runtime?.arch === 'arm64', 'Runtime contract must bind Linux ARM64')
+assert(contract.runtime?.node === '26.13.0' && contract.runtime?.npmBuildOnly === '12.2.1', 'Runtime contract must bind the approved Node and npm versions')
+assert(contract.deployment?.applicationId === 'thetutorlyfe.com' && contract.deployment?.schemaVersion === 1, 'Runtime contract must bind the site and host capability schema')
+assert(/validate_deployment_contract/.test(artifactVerifier), 'Artifact verifier must validate host requirements')
 assert(contract.required?.includes('back-end/dist/boundedRateStore.js'), 'Runtime contract must independently require the bounded rate module')
 assert(contract.privateConfiguration?.includes('LEAD_WEBHOOK_URL'), 'Runtime contract must keep the webhook outside immutable artifacts')
 assert(/git status --porcelain/.test(artifactPackager), 'Artifact packaging must require clean exact source')
@@ -136,7 +139,13 @@ assert(/trusted manifest checksum mismatch/.test(artifactVerifier), 'Artifact ve
 assert(/mutable-candidate/.test(promotionRecoveryTest) && /rollback-provenance-failure/.test(promotionRecoveryTest) && /missing-previous-acceptance/.test(promotionRecoveryTest), 'Promotion tests must exercise mutable candidates, rollback failure, and missing rollback provenance')
 assert(/st_uid != 0/.test(trustedPaths) && /0o022/.test(trustedPaths), 'Administrative paths must be root-owned and non-writable')
 
-for (const removedPath of ['.dockerignore', 'Dockerfile', 'compose.yaml', 'docker-compose.yml', 'nginx.conf']) {
+for (const removedPath of [
+  '.dockerignore',
+  'Dockerfile',
+  'compose.yaml',
+  'docker-compose.yml',
+  'nginx.conf',
+]) {
   try {
     await access(resolve(projectRoot, removedPath))
     throw new Error(`${removedPath} must be absent from the direct production site`)
