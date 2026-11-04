@@ -143,6 +143,22 @@ class RuntimeArtifactTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "development dependency in runtime"):
             artifact.validate(self.root, self.manifest())
 
+    def test_native_compiler_cannot_be_promoted_as_a_runtime_dependency(self):
+        backend_path = self.root / "back-end/package.json"
+        backend = json.loads(backend_path.read_text())
+        backend["dependencies"]["typescript-native"] = "npm:typescript@7.0.2"
+        backend_path.write_text(json.dumps(backend))
+        compiler = self.root / "back-end/node_modules/typescript-native/package.json"
+        compiler.parent.mkdir(parents=True)
+        compiler.write_text(json.dumps({"version": "7.0.2"}))
+        lock_path = self.root / "back-end/package-lock.json"
+        lock = json.loads(lock_path.read_text())
+        lock["packages"][""] = backend
+        lock["packages"]["node_modules/typescript-native"] = {"version": "7.0.2"}
+        lock_path.write_text(json.dumps(lock))
+        with self.assertRaisesRegex(ValueError, "development tool in runtime"):
+            artifact.validate(self.root, self.manifest())
+
     def test_exact_archive_roundtrip_and_post_copier_verification(self):
         with tempfile.TemporaryDirectory(dir=self.root.parent) as temporary:
             output = Path(temporary)

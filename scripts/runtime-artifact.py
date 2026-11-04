@@ -198,6 +198,7 @@ def validate(root, manifest, trusted_manifest=False):
         "back-end/node_modules/@types",
         "back-end/node_modules/tsx",
         "back-end/node_modules/typescript",
+        "back-end/node_modules/typescript-native",
         "back-end/node_modules/vite",
         "back-end/node_modules/vitest",
         "back-end/node_modules/eslint",

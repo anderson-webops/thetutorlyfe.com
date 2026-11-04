@@ -1,7 +1,7 @@
 {
   "name": "thetutorlyfe-frontend",
   "type": "module",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "private": true,
   "description": "Static Nuxt frontend for The Tutor Lyfe.",
   "author": "Jacob Anderson",
@@ -33,6 +33,8 @@
     "@types/node": "^26.6.6",
     "@unocss/eslint-config": "^66.12.0",
     "@unocss/nuxt": "^66.12.0",
+    "@vitejs/devtools": "0.7.6",
+    "@vitejs/devtools-kit": "0.7.6",
     "@vue/compiler-sfc": "^3.5.44",
     "@vueuse/nuxt": "^15.0.0",
     "c12": "^3.3.4",
