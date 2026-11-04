@@ -1,6 +1,6 @@
 {
 	"name": "thetutorlyfe-api",
-	"version": "1.0.2",
+	"version": "1.0.3",
 	"private": true,
 	"description": "Same-origin health and lead-delivery API for The Tutor Lyfe.",
 	"type": "module",
@@ -34,7 +34,7 @@
 		"express": "^5.3.0",
 		"express-rate-limit": "^8.7.3",
 		"helmet": "^8.3.0",
-		"qs": "file:vendor/qs-6.17.2-webops.2.tgz"
+		"qs": "file:vendor/qs-6.17.2-webops.4.tgz"
 	},
 	"overrides": {
 		"minimatch": "11.0.4",

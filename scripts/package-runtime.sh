@@ -29,7 +29,7 @@ node scripts/write-release-metadata.mjs
 cp package.json package-lock.json .tutorlyfe-release-prepared.json "$stage/"
 cp back-end/package.json back-end/package-lock.json "$stage/back-end/"
 mkdir -p "$stage/back-end/vendor"
-cp back-end/vendor/qs-6.17.2-webops.2.tgz "$stage/back-end/vendor/"
+cp back-end/vendor/qs-6.17.2-webops.4.tgz "$stage/back-end/vendor/"
 cp front-end/package.json "$stage/front-end/"
 cp -R back-end/dist "$stage/back-end/"
 cp -R front-end/.output/public "$stage/front-end/.output/"
@@ -39,7 +39,7 @@ npm audit --prefix "$stage/back-end" --omit=dev --audit-level=low
 npm audit --prefix "$stage/back-end" --audit-level=low
 npm audit signatures --prefix "$stage/back-end"
 npm ls --prefix "$stage/back-end" --omit=dev --all > "$output/$asset_prefix-dependency-tree.txt"
-rm -- "$stage/back-end/vendor/qs-6.17.2-webops.2.tgz"
+rm -- "$stage/back-end/vendor/qs-6.17.2-webops.4.tgz"
 rmdir -- "$stage/back-end/vendor"
 rm -rf -- "$stage/back-end/node_modules/.bin"
 
