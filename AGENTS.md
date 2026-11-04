@@ -51,7 +51,6 @@ Treat this as a standing instruction for this site.
 - `npm run lint` runs ESLint across both workspaces.
 - `npm run build` generates the static front-end to `front-end/.output/public` and compiles the back-end to
   `back-end/dist`.
-- `npm run validate` runs the native-binding, lint, type, API test, build, and deployment-output gates.
 
 ## Coding Style & Naming Conventions
 
@@ -63,7 +62,7 @@ Treat this as a standing instruction for this site.
 
 ## Testing & Verification
 
-- Run `npm run lint`, `npm run typecheck`, and `npm run build` before pushing site changes.
+- Run `npm run validate` before delivering application changes; it includes lint, types, tests, build, and deployment-output checks.
 - When changing API behavior, verify both the front-end call site and the Express route behavior together.
 - Keep browser API traffic same-origin at `/api`; deployment adapters must route that path to the Express app.
 - Keep tutoring lead details on the same-origin `POST /api/leads` path. The browser must never receive the configured
@@ -94,11 +93,8 @@ Treat this as a standing instruction for this site.
 - Preserve the front-end/back-end workspace structure and review upstream template changes deliberately. Do not
   force-mirror template history over site-specific content or deployment configuration.
 
-## Agent Delivery Workflow
+## Lockfile Boundaries
 
-- Do not leave completed work uncommitted. After each coherent, validated change set, create a commit and push it in
-  the same session.
-- Keep `package-lock.json` synchronized with dependency changes before every commit or push.
 - Keep `back-end/package-lock.json` synchronized with backend manifest changes; it is the production-only direct API
   lock, while the root lock remains authoritative for workspace development and Netlify.
 - Prefer small, logically grouped commits over one mixed commit.

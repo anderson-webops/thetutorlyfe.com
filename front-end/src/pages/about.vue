@@ -23,7 +23,6 @@ useScrollReveal()
           </NuxtLink> / About
         </div>
         <h1>Meet Maggie</h1>
-        <p>The licensed teacher behind The Tutor Lyfe — here to make math click for every student.</p>
       </div>
     </section>
 
@@ -31,7 +30,6 @@ useScrollReveal()
       <div class="container split">
         <img class="split-photo reveal" src="/assets/maggie.jpeg" alt="Maggie, founder of The Tutor Lyfe">
         <div class="reveal">
-          <h2>Hi, I'm Maggie 👋</h2>
           <p>I'm a <strong>licensed teacher with a Master's degree in Education</strong>, and I live in <strong>Lawrenceville, Georgia</strong>, just outside Atlanta. Teaching has always been my calling — there's nothing quite like the moment a student's face lights up because a tricky concept finally makes sense.</p>
           <p>I created The Tutor Lyfe to bring that same one-on-one, lightbulb-moment teaching to families everywhere through online tutoring. No matter where you are, your child can get patient, expert math help from the comfort of home.</p>
           <ul class="cred-list">
@@ -50,9 +48,7 @@ useScrollReveal()
     <section class="section alt">
       <div class="container">
         <div class="section-head reveal">
-          <span class="kicker">My approach</span>
           <h2>How I teach</h2>
-          <p>Great tutoring isn't about cramming — it's about building real understanding and confidence.</p>
         </div>
         <div class="grid-3">
           <div class="card reveal">
@@ -83,14 +79,12 @@ useScrollReveal()
     <section class="section">
       <div class="container split reverse">
         <div class="reveal">
-          <span class="kicker split-kicker">Why online</span>
           <h2>Learning that fits your life</h2>
-          <p>Online tutoring means no commute, no stress, and total flexibility. Sessions happen on a shared screen with interactive tools, so it feels just as personal as sitting side-by-side.</p>
           <ul class="cred-list">
             <li><span class="tick">✓</span> Learn from the comfort of home</li>
             <li><span class="tick">✓</span> Flexible scheduling around school &amp; activities</li>
             <li><span class="tick">✓</span> Interactive, screen-shared whiteboard lessons</li>
-            <li><span class="tick">✓</span> Open to students anywhere — online, anytime</li>
+            <li><span class="tick">✓</span> Open to students anywhere</li>
           </ul>
           <NuxtLink class="btn btn-secondary" to="/programs">
             Explore programs
@@ -104,7 +98,6 @@ useScrollReveal()
       <div class="container">
         <div class="cta-band reveal">
           <h2>Let's give your child a head start</h2>
-          <p>Book a free intro session and let's talk about your student's goals. Online, anytime.</p>
           <NuxtLink class="btn btn-secondary btn-lg" to="/contact">
             Book Your Free Intro
           </NuxtLink>

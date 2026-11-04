@@ -24,7 +24,6 @@ useScrollReveal()
         <div class="hero-copy reveal">
           <span class="hero-eyebrow">📐 Math Tutoring · Grades 3–10</span>
           <h1>Confident math starts <span class="accent">here.</span></h1>
-          <span class="hand">Online, anytime.</span>
           <p class="lead">
             One-on-one online math tutoring that gives students a strong, joyful start to their math education — taught by a licensed teacher who actually makes it click.
           </p>
@@ -44,14 +43,6 @@ useScrollReveal()
         </div>
         <div class="hero-visual reveal">
           <img class="photo" src="/assets/classroom.jpeg" alt="Maggie with her students">
-          <div class="hero-badge b1">
-            <span class="emoji">🎓</span>
-            <div><strong>M.Ed. Educator</strong><span>Licensed &amp; certified</span></div>
-          </div>
-          <div class="hero-badge b2">
-            <span class="emoji">💻</span>
-            <div><strong>Learn from home</strong><span>Flexible scheduling</span></div>
-          </div>
         </div>
       </div>
     </section>
@@ -59,7 +50,6 @@ useScrollReveal()
     <section class="section">
       <div class="container">
         <div class="section-head reveal">
-          <span class="kicker">Why The Tutor Lyfe</span>
           <h2>Math help that actually sticks</h2>
           <p>We focus on the early-to-middle years — grades 3 to 10 — because that's when the right support builds confidence that lasts a lifetime.</p>
         </div>
@@ -69,7 +59,7 @@ useScrollReveal()
               👩‍🏫
             </div>
             <h3>Taught by a real teacher</h3>
-            <p>Every session is led by Maggie, a licensed teacher with a Master's in Education — not a side-gig tutor. Real classroom expertise, one-on-one.</p>
+            <p>Every session is led by Maggie, a licensed teacher with a Master's in Education. Real classroom expertise, one-on-one.</p>
           </div>
           <div class="card reveal">
             <div class="icon">
@@ -93,7 +83,6 @@ useScrollReveal()
       <div class="container split">
         <img class="split-photo reveal" src="/assets/maggie.jpeg" alt="Maggie, founder and tutor">
         <div class="reveal">
-          <span class="kicker split-kicker">Meet your tutor</span>
           <h2>Hi, I'm Maggie 👋</h2>
           <p>I'm a licensed teacher with a Master's degree in Education, based in Lawrenceville, Georgia, just outside Atlanta. I started The Tutor Lyfe because every student deserves math support that's patient, personal, and genuinely encouraging.</p>
           <ul class="cred-list">
@@ -112,7 +101,6 @@ useScrollReveal()
     <section class="section cream">
       <div class="container">
         <div class="section-head reveal">
-          <span class="kicker">Grades we cover</span>
           <h2>From multiplication to high-school math</h2>
           <p>Whether it's times tables, fractions, pre-algebra, or geometry — we meet your student right where they are.</p>
         </div>
@@ -132,9 +120,7 @@ useScrollReveal()
     <section id="how" class="section">
       <div class="container">
         <div class="section-head reveal">
-          <span class="kicker">How it works</span>
-          <h2>Getting started is easy</h2>
-          <p>Three simple steps from "we need help" to "math makes sense now."</p>
+          <h2>How it works</h2>
         </div>
         <div class="steps">
           <div class="step reveal">
@@ -156,47 +142,10 @@ useScrollReveal()
       </div>
     </section>
 
-    <section class="section alt">
-      <div class="container stats reveal">
-        <div class="stat"><div class="num">3–10</div><div class="lbl">Grades supported</div></div>
-        <div class="stat"><div class="num">M.Ed.</div><div class="lbl">Qualified educator</div></div>
-        <div class="stat"><div class="num">1:1</div><div class="lbl">Personal attention</div></div>
-        <div class="stat"><div class="num">100%</div><div class="lbl">Online &amp; flexible</div></div>
-      </div>
-    </section>
-
-    <section class="section">
-      <div class="container">
-        <div class="section-head reveal">
-          <span class="kicker">Kind words</span>
-          <h2>Loved by students &amp; parents</h2>
-          <p>Real testimonials coming soon — here's the kind of progress we love to see.</p>
-        </div>
-        <div class="grid-3">
-          <div class="quote-card reveal">
-            <div class="stars">★★★★★</div>
-            <p>"Maggie made fractions finally make sense for my daughter. She actually looks forward to math now!"</p>
-            <div class="who">Parent of a 5th grader<span>Online sessions</span></div>
-          </div>
-          <div class="quote-card reveal">
-            <div class="stars">★★★★★</div>
-            <p>"Patient, encouraging, and so organized. My son's grades went up and so did his confidence."</p>
-            <div class="who">Parent of an 8th grader<span>Online sessions</span></div>
-          </div>
-          <div class="quote-card reveal">
-            <div class="stars">★★★★★</div>
-            <p>"The flexible online scheduling was perfect for our busy week. Highly recommend The Tutor Lyfe."</p>
-            <div class="who">Parent of a 9th grader<span>Online sessions</span></div>
-          </div>
-        </div>
-      </div>
-    </section>
-
     <section class="section">
       <div class="container">
         <div class="cta-band reveal">
           <h2>Ready to give your child a head start?</h2>
-          <p>Book a free, no-pressure intro session today. Online, anytime — let's make math click.</p>
           <NuxtLink class="btn btn-secondary btn-lg" to="/contact">
             Book Your Free Intro
           </NuxtLink>

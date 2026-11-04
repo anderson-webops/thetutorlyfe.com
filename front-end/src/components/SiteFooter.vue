@@ -8,7 +8,6 @@ const currentYear = new Date().getFullYear()
       <div class="footer-grid">
         <div class="footer-brand">
           <img src="/assets/logo.jpeg" alt="The Tutor Lyfe">
-          <p>Expert, encouraging online math tutoring for grades 3–10. Online, anytime.</p>
         </div>
 
         <div>
@@ -74,7 +73,6 @@ const currentYear = new Date().getFullYear()
 
       <div class="footer-bottom">
         <span>© {{ currentYear }} The Tutor Lyfe. All rights reserved.</span>
-        <span>Made with 💚 for curious learners.</span>
       </div>
     </div>
   </footer>
