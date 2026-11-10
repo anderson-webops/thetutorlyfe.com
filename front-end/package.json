@@ -24,7 +24,7 @@
     "vue": "^3.5.44"
   },
   "devDependencies": {
-    "@iconify-json/carbon": "^1.2.29",
+    "@iconify-json/carbon": "^1.2.30",
     "@iconify-json/twemoji": "^1.2.5",
     "@nuxt/devtools": "^4.1.0",
     "@nuxt/eslint": "^1.17.0",
@@ -35,7 +35,7 @@
     "@unocss/nuxt": "^66.12.0",
     "@vitejs/devtools": "0.8.2",
     "@vitejs/devtools-kit": "0.8.2",
-    "@vue/compiler-sfc": "^3.5.44",
+    "@vue/compiler-sfc": "^3.5.45",
     "@vueuse/nuxt": "^15.0.0",
     "c12": "^3.3.4",
     "nuxt": "^4.6.4",
