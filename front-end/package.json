@@ -24,7 +24,7 @@
     "vue": "^3.5.45"
   },
   "devDependencies": {
-    "@iconify-json/carbon": "^1.2.29",
+    "@iconify-json/carbon": "^1.2.30",
     "@iconify-json/twemoji": "^1.2.5",
     "@nuxt/devtools": "^4.1.0",
     "@nuxt/eslint": "^1.17.0",
@@ -41,7 +41,7 @@
     "nuxt": "^4.6.4",
     "nuxt-security": "^2.7.0",
     "unocss": "^66.12.0",
-    "vue-router": "^5.4.0",
+    "vue-router": "^5.5.0",
     "vue-tsc": "^3.3.14"
   },
   "browserslist": [
