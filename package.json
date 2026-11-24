@@ -63,7 +63,7 @@
 		"@types/node": "^26.6.6",
 		"@typescript-eslint/types": "^8.72.2",
 		"@unocss/eslint-plugin": "^66.13.0",
-		"@vitejs/devtools-kit": "0.8.2",
+		"@vitejs/devtools-kit": "0.7.6",
 		"archiver": "^8.0.0",
 		"axe-core": "^4.14.0",
 		"braces": "file:vendor/braces",
@@ -106,7 +106,11 @@
 		},
 		"shell-quote": "1.12.0",
 		"@nuxt/devtools": {
+			"@vitejs/devtools-kit@^0.8.0": "0.8.2",
 			"launch-editor": "2.14.2"
+		},
+		"vite-plugin-vue-devtools": {
+			"@vitejs/devtools-kit@^0.8.2": "0.8.2"
 		},
 		"vite": {
 			".": "^8.3.5",
