@@ -1,10 +1,9 @@
 # Dependency acceptance
 
 Nuxt DevTools 4.1.0 uses the tested Vite DevTools 0.8.2 host and kit. The
-frontend declares that current pair directly. The original Vue plugin's
-9.0.0-rc.2 distribution and Unhead 3 retain their supported 0.7 API consumers.
-The root compatibility kit and explicit hoisted npm layout preserve those
-original peer contracts while the frontend uses 0.8.2. A layout with an
+frontend declares that pair directly. The original Vue plugin 9.0.0-rc.3
+uses kit 0.8.2 and requires a 0.7 host. The root keeps kit 0.7.6 for Unhead
+3.4.3. Nuxt DevTools and the Vue plugin use their supported 0.8.2 kit. A layout with an
 incompatible kit at either consumer must fail the complete installed graph.
 The former metadata-only peer patch and local archive are retired. The original
 registry metadata, integrity and all 38 payload hashes remain checked against
