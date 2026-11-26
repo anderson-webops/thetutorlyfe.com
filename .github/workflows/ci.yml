@@ -36,6 +36,7 @@ jobs:
 
       - name: Prepare the independent locked build toolchain
         run: |
+          bash scripts/protect-hosted-node.sh "$NODE_VERSION"
           bin="$(node scripts/build-toolchain.mjs --print-bin)"
           printf '%s\n' "$bin" >> "$GITHUB_PATH"
           "$bin/node" scripts/check-build-toolchain.mjs

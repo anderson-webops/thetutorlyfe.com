@@ -12,6 +12,9 @@ concurrency:
   group: direct-release-${{ github.ref }}
   cancel-in-progress: false
 
+env:
+  NODE_VERSION: 26.13.1
+
 jobs:
   prepare:
     name: Prepare exact tagged source
@@ -27,7 +30,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 26.13.1
+          node-version: ${{ env.NODE_VERSION }}
           package-manager-cache: false
 
       - name: Prepare exact tagged source runtime
@@ -35,6 +38,7 @@ jobs:
           CI: "true"
           PUPPETEER_SKIP_DOWNLOAD: "true"
         run: |
+          bash scripts/protect-hosted-node.sh "$NODE_VERSION"
           printf '/.ai-work/\n' >> "$(git rev-parse --git-path info/exclude)"
           BUILD_ROOT="$(dirname "$GITHUB_WORKSPACE")" \
           NODE_BIN_DIR="$(dirname "$(command -v node)")" \
@@ -58,12 +62,13 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 26.13.1
+          node-version: ${{ env.NODE_VERSION }}
           package-manager-cache: false
 
       - name: Prepare isolated artifact tools
         # zizmor: ignore[adhoc-packages]
         run: |
+          bash scripts/protect-hosted-node.sh "$NODE_VERSION"
           bin="$(node scripts/build-toolchain.mjs --print-bin)"
           printf '%s\n' "$bin" >> "$GITHUB_PATH"
           "$bin/node" scripts/check-build-toolchain.mjs
