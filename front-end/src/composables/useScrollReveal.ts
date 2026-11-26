@@ -1,3 +1,5 @@
+import { nextTick, onBeforeUnmount, onMounted } from 'vue'
+
 export function useScrollReveal() {
   let observer: IntersectionObserver | undefined
   let motionQuery: MediaQueryList | undefined

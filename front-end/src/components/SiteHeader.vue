@@ -1,4 +1,8 @@
 <script setup lang="ts">
+import { ref, useTemplateRef, watch } from 'vue'
+import { useRoute } from '#app'
+import { NuxtLink } from '#components'
+
 const route = useRoute()
 const menuOpen = ref(false)
 const toggleButton = useTemplateRef<HTMLButtonElement>('toggleButton')

@@ -1,6 +1,11 @@
 <!-- Preserve the captured site's semantic class order and native select markup. -->
 <script setup lang="ts">
 /* eslint-disable unocss/order, vue/singleline-html-element-content-newline */
+import { computed, ref } from 'vue'
+import { useSeoMeta } from '#app'
+import { NuxtLink } from '#components'
+import { useScrollReveal } from '~/composables/useScrollReveal'
+
 type FormState = 'idle' | 'sending' | 'success' | 'error'
 
 const formState = ref<FormState>('idle')

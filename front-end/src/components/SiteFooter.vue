@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { NuxtLink } from '#components'
+
 const currentYear = new Date().getFullYear()
 </script>
 

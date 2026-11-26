@@ -1,6 +1,11 @@
 <!-- Preserve the captured site's semantic class order and compact repeated markup. -->
 <script setup lang="ts">
 /* eslint-disable unocss/order, vue/singleline-html-element-content-newline */
+import { useSeoMeta } from '#app'
+import { definePageMeta } from '#app/composables/pages'
+import { NuxtLink } from '#components'
+import { useScrollReveal } from '~/composables/useScrollReveal'
+
 definePageMeta({
   layout: 'home',
 })

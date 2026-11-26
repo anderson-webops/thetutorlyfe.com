@@ -6,8 +6,9 @@ root=$(cd -- "$(dirname -- "$0")/.." && pwd)
 cd -- "$root"
 test "$(uname -s)" = Linux
 test "$(uname -m)" = aarch64
-test "$(node --version)" = v26.13.0
-test "$(npm --version)" = 12.2.1
+test "$(node --version)" = v26.13.1
+test "$(npm --version)" = 12.2.2
+toolchain_receipt=$(node scripts/check-build-toolchain.mjs)
 test -z "$(git status --porcelain)"
 commit=$(git rev-parse HEAD)
 output=$(realpath "${1:?Pass an empty output directory under .ai-work/runs}")
@@ -29,7 +30,9 @@ node scripts/write-release-metadata.mjs
 cp package.json package-lock.json .tutorlyfe-release-prepared.json "$stage/"
 cp back-end/package.json back-end/package-lock.json "$stage/back-end/"
 mkdir -p "$stage/back-end/vendor"
-cp back-end/vendor/qs-6.17.2-webops.4.tgz "$stage/back-end/vendor/"
+for archive in qs-6.17.2-webops.5 cookie-2.0.2-webops.2 encodeurl-3.0.1-webops.2 raw-body-4.0.0-webops.2 type-is-3.0.0-webops.2; do
+  cp "back-end/vendor/$archive.tgz" "$stage/back-end/vendor/"
+done
 cp front-end/package.json "$stage/front-end/"
 cp -R back-end/dist "$stage/back-end/"
 cp -R front-end/.output/public "$stage/front-end/.output/"
@@ -39,7 +42,9 @@ npm audit --prefix "$stage/back-end" --omit=dev --audit-level=low
 npm audit --prefix "$stage/back-end" --audit-level=low
 npm audit signatures --prefix "$stage/back-end"
 npm ls --prefix "$stage/back-end" --omit=dev --all > "$output/$asset_prefix-dependency-tree.txt"
-rm -- "$stage/back-end/vendor/qs-6.17.2-webops.4.tgz"
+for archive in qs-6.17.2-webops.5 cookie-2.0.2-webops.2 encodeurl-3.0.1-webops.2 raw-body-4.0.0-webops.2 type-is-3.0.0-webops.2; do
+  rm -- "$stage/back-end/vendor/$archive.tgz"
+done
 rmdir -- "$stage/back-end/vendor"
 rm -rf -- "$stage/back-end/node_modules/.bin"
 
@@ -65,10 +70,11 @@ if python3 -B scripts/runtime-artifact.py verify "$output/copied" --archive "$ar
 fi
 bash scripts/test-unpacked-artifact.sh "$output/copied" missing-module
 
-python3 -B - "$output" "$asset_prefix" <<'PY'
+BUILD_TOOLCHAIN_RECEIPT="$toolchain_receipt" python3 -B - "$output" "$asset_prefix" <<'PY'
 import datetime
 import hashlib
 import json
+import os
 from pathlib import Path
 import sys
 
@@ -76,6 +82,7 @@ output = Path(sys.argv[1])
 asset_prefix = sys.argv[2]
 receipt = json.loads((output / "pack.json").read_text())
 receipt["acceptedAt"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+receipt["buildToolchain"] = json.loads(os.environ["BUILD_TOOLCHAIN_RECEIPT"])
 receipt["bytes"] = (output / receipt["archive"]).stat().st_size
 receipt["checks"] = [
     "production-only locked install",
@@ -106,6 +113,15 @@ receipt["harnessSha256"] = {
         "deploy/systemd/trusted-paths.py",
         "scripts/test-promotion-recovery.py",
         "scripts/test-promotion-recovery.sh",
+        "scripts/check-build-toolchain.mjs",
+        "scripts/build-toolchain.mjs",
+        "scripts/build-toolchain-state.mjs",
+        "scripts/build-toolchain-cache.mjs",
+        "scripts/build-toolchain-seed.mjs",
+        "build-toolchain/PAYLOAD.json",
+        "build-toolchain/UPSTREAM.json",
+        "build-toolchain/package.json",
+        "build-toolchain/package-lock.json",
     ]
 }
 (output / f"{asset_prefix}-acceptance.json").write_text(json.dumps(receipt, indent=2) + "\n")

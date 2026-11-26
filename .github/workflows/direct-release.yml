@@ -3,7 +3,7 @@ name: Validate and publish The Tutor Lyfe direct release
 on:
   push:
     tags:
-      - "v*"
+      - "v*.*.*"
 
 permissions:
   contents: read
@@ -27,15 +27,8 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 26.13.0
+          node-version: 26.13.1
           package-manager-cache: false
-
-      - name: Pin npm without checkout credentials
-        # zizmor: ignore[adhoc-packages]
-        run: |
-          npm install --global npm@12.2.1 --allow-scripts=npm
-          node --version
-          npm --version
 
       - name: Prepare exact tagged source runtime
         env:
@@ -65,13 +58,15 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 26.13.0
+          node-version: 26.13.1
           package-manager-cache: false
 
       - name: Prepare isolated artifact tools
         # zizmor: ignore[adhoc-packages]
         run: |
-          npm install --global npm@12.2.1 --allow-scripts=npm
+          bin="$(node scripts/build-toolchain.mjs --print-bin)"
+          printf '%s\n' "$bin" >> "$GITHUB_PATH"
+          "$bin/node" scripts/check-build-toolchain.mjs
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends bubblewrap apparmor python3-minimal
           sudo install -D -m 0755 /usr/bin/bwrap /opt/tutorlyfe-test-tools/bwrap
@@ -88,7 +83,9 @@ jobs:
           PUPPETEER_SKIP_DOWNLOAD: "true"
           SKIP_INSTALL_SIMPLE_GIT_HOOKS: "1"
         run: |
+          bash scripts/prepare-unimport-source.sh
           npm ci --include=optional --strict-allow-scripts
+          bash scripts/prepare-compiler-fixtures.sh
           npm run audit:all
           npm run audit:prod
           npm run audit:api
@@ -97,6 +94,31 @@ jobs:
           PATH="/opt/tutorlyfe-test-tools:$PATH" npm run test:promotion
           mkdir -p .ai-work/runs/tagged-artifact
           PATH="/opt/tutorlyfe-test-tools:$PATH" npm run package:runtime -- "$PWD/.ai-work/runs/tagged-artifact"
+
+          python3 -B - .ai-work/runs/tagged-artifact "$(git rev-parse HEAD)" <<'PY'
+          import hashlib
+          import json
+          import sys
+          from pathlib import Path
+
+          output = Path(sys.argv[1])
+          commit = sys.argv[2]
+          receipt_path, = output.glob("thetutorlyfe-com-*-acceptance.json")
+          manifest_path, = output.glob("thetutorlyfe-com-*-runtime-manifest.json")
+          receipt = json.loads(receipt_path.read_text())
+          manifest = json.loads(manifest_path.read_text())
+          contract = json.loads(Path("deploy/runtime-artifact.json").read_text())
+          archive = output / receipt["archive"]
+          assert receipt["commit"] == manifest["commit"] == commit
+          assert receipt["sha256"] == hashlib.sha256(archive.read_bytes()).hexdigest()
+          assert manifest["contract"] == contract
+          assert receipt["buildToolchain"]["profile"] == contract["runtime"]["npmBuildProfile"]
+          assert receipt["buildToolchain"]["lockSha256"] == contract["runtime"]["npmBuildLockSha256"]
+          assert receipt["buildToolchain"]["payloadTreeSha256"] == contract["runtime"]["npmBuildPayloadSha256"]
+          assert hashlib.sha256(Path("build-toolchain/package-lock.json").read_bytes()).hexdigest() == contract["runtime"]["npmBuildLockSha256"]
+          assert contract["deployment"]["schemaVersion"] == 1
+          assert contract["deployment"]["applicationId"] == "thetutorlyfe.com"
+          PY
 
       - name: Preserve accepted runtime assets as workflow evidence
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

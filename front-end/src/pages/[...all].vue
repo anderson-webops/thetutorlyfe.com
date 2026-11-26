@@ -1,6 +1,10 @@
 <!-- Preserve the Tutor Lyfe semantic class order. -->
 <script setup lang="ts">
 /* eslint-disable unocss/order */
+import { useRouter, useSeoMeta } from '#app'
+import { NuxtLink } from '#components'
+import { useScrollReveal } from '~/composables/useScrollReveal'
+
 const router = useRouter()
 
 useSeoMeta({

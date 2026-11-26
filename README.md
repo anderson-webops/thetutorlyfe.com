@@ -11,12 +11,48 @@ production, and Netlify each route that path to the Express application without 
 
 ## Supported toolchain
 
-- Node.js `26.13.0`
-- npm `12.2.1`
+- Node.js `26.13.1`
+- npm `12.2.2` through the independently locked `webops-locked-npm-v1` build profile
 
-Use the repository root for all package operations. The committed npm lockfile includes optional native packages for
-Linux ARM64 glibc and musl deployments, and npm rejects unreviewed dependency install scripts. npm uses the nested
-install strategy so optional peer packages from unrelated tools cannot leak across workspace boundaries.
+```sh
+export PATH="$(node scripts/build-toolchain.mjs --print-bin):$PATH"
+npm ci --include=optional --strict-allow-scripts
+```
+
+Bootstrap uses the selected Node's existing npm only to install the reviewed,
+locked build-tool graph. Application installation and checks use the repaired
+profile. The private installation survives application `npm ci`, and global
+tools remain unchanged. The bootstrap-only graph accepts the stock Node 26.13.1
+npm 11.20.0 seed; application and release commands still require the verified
+npm 12.2.2 profile. Bootstrap reuses a private installation only when its complete
+dependency payload matches the source-reviewed `build-toolchain/PAYLOAD.json`
+digest, its paired Node matches the selected executable, and current full,
+production and signature audits pass. A cache receipt alone never qualifies it.
+`NPM_CONFIG_CACHE` places profiles under that cache's `_site-toolchains/reuse-v1`,
+otherwise they stay in repository-owned scratch. Identical concurrent requests
+wait for the existing bootstrap outcome. Three fixed slots bound retained
+profiles; reaching capacity or finding failed/interrupted creation stops with
+the evidence path. Retire a slot and its matching identity directory only after
+reviewing their outcome and proving no process, worktree or consumer uses them.
+Legacy profiles are preserved, not automatically imported or evicted.
+Use a relocatable Node distribution; a dynamically linked executable without
+its required libraries cannot qualify after copying.
+Windows and hosted-editor execution require their own acceptance; source CI
+and direct release acceptance target Linux, with local macOS validation.
+Verification binds regular-file checks and reads to one no-follow, nonblocking
+file descriptor, and parses the integrity-verified byte snapshots. Platforms
+without those open capabilities fail explicitly rather than omitting protection.
+
+When changing the independent lock, reproduce the payload digest from a fresh
+locked installation with scripts disabled and optional packages included, after
+both audits and registry provenance pass. Review `inspectToolchainPayload` output
+and update `build-toolchain/PAYLOAD.json` and the artifact contract together.
+Run `npm run test:build-toolchain` for cold/warm, dependency/Node tampering,
+concurrency, interrupted creation and retention regressions.
+
+Use the repository root for all package operations. The committed npm lockfile includes optional native packages for Linux ARM64 glibc and musl deployments, and npm rejects unreviewed dependency install scripts.
+
+npm uses the explicit hoisted install strategy, with native bindings checked against their actual dependency ancestry. Direct build-time type and lint dependencies are declared explicitly rather than relying on accidental hoisting.
 
 ```bash
 npm ci
@@ -94,7 +130,7 @@ readiness, identity, edge-policy, restart, or interruption failure.
 
 ```bash
 # Run only from a separately reviewed root-owned administrative checkout.
-sudo NODE_BIN_DIR=/opt/node-26.13.0/bin deploy/systemd/install-service.sh
+sudo NODE_BIN_DIR=/opt/node-26.13.1/bin deploy/systemd/install-service.sh
 
 # Build verification is unprivileged and separate from accepted releases.
 deploy/systemd/prepare-release.sh /srv/thetutorlyfe.com/builds/<release>

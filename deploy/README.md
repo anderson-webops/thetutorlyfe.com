@@ -15,6 +15,17 @@ destination in `LEAD_WEBHOOK_URL`. The destination stays in `/etc/thetutorlyfe.c
 `0600`. It is never part of a release artifact, browser bundle, command argument, test log, or acceptance receipt.
 
 The public probe contract is:
+Use Node 26.13.1 from the approved protected location, normally
+`/opt/node-26.13.1/bin`, and the independently locked `webops-locked-npm-v1`
+profile for npm 12.2.2 builds. Preparation selects and audits the profile before
+installing the application; the host's original npm is only the bootstrap seed.
+`NODE_BIN_DIR` can select an
+approved alternative for the helpers; an alternate service ExecStart needs its
+own review. Do not replace the host-wide `/usr/bin/node`. Existing installations
+created with build-owned deployment parents require a separate ownership and
+content review before adopting the new helper. Preserve the serving release,
+retained rollback and all state; no automatic recursive ownership migration occurs.
+
 
 - `GET` and `HEAD` `/healthz`, `/api/healthz`, and `/api/health`: liveness, always minimal `200 {"ok":true}` while the
   process can serve requests.
@@ -60,7 +71,7 @@ and direct runtime startup/shutdown tests.
 
 The Linux ARM64 release job then:
 
-1. Builds from the exact clean tag with Node 26.13.0 and npm 12.2.1.
+1. Builds from the exact clean tag with Node 26.13.1 and npm 12.2.2.
 2. Copies only the declared compiled API, static output, source manifests, and independent production lock.
 3. Installs only the standalone backend production graph and rejects development or unrelated packages.
 4. Creates a closed per-file SHA-256 and size inventory bound to the source commit.
@@ -80,7 +91,7 @@ The complete contract is in `deploy/runtime-artifact.json` and `docs/runtime-art
 On a fresh or separately reviewed compatible installation:
 
 ```bash
-sudo NODE_BIN_DIR=/opt/node-26.13.0/bin \
+sudo NODE_BIN_DIR=/opt/node-26.13.1/bin \
   /root/reviewed/thetutorlyfe.com/deploy/systemd/install-service.sh
 ```
 

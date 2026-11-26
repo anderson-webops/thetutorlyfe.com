@@ -159,7 +159,8 @@ def setup(root):
 
 
 Path("/fixture/runtime").mkdir(parents=True)
-shutil.copy2("/runtime/node", "/fixture/runtime/node")
+shutil.copyfile("/runtime/node", "/fixture/runtime/node")
+Path("/fixture/runtime/node").chmod(0o755)
 Path("/usr/local/bin").mkdir(parents=True)
 for command_name in ["curl", "systemctl", "nginx", "sleep"]:
     command = Path("/usr/local/bin") / command_name
@@ -243,12 +244,13 @@ for mode in modes:
     sentinel = root / "UNTRUSTED_RUNTIME_EXECUTED"
     if mode.startswith("ambiguous-runtime-"):
         (root / "protected/bin").mkdir(parents=True)
-        shutil.copy2("/runtime/node", root / "protected/bin/node")
+        shutil.copyfile("/runtime/node", root / "protected/bin/node")
+        (root / "protected/bin/node").chmod(0o755)
         (root / "build/subdir").mkdir(parents=True)
         (root / "build/bin").mkdir()
         (root / "protected/link").symlink_to(root / "build/subdir")
         unsafe = root / "build/bin/node"
-        unsafe.write_text(f'#!/bin/sh\ntouch "{sentinel}"\nprintf "v26.13.0\\n"\n')
+        unsafe.write_text(f'#!/bin/sh\ntouch "{sentinel}"\nprintf "v26.13.1\\n"\n')
         unsafe.chmod(0o755)
         (root / "build").chmod(0o777)
         env["NODE_BIN_DIR"] = str(root / "protected/link") + "/../bin"

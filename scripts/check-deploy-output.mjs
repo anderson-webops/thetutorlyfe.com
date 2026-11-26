@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { access, readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
+import { toolchainMetadata } from './build-toolchain-state.mjs'
 
 const projectRoot = resolve(import.meta.dirname, '..')
 const paths = {
@@ -83,8 +84,8 @@ assert(!apiApp.includes('sourceMappingURL') && !apiServer.includes('sourceMappin
 assert(/^User=thetutorlyfe$/m.test(directService), 'Direct API service must use its unprivileged account')
 assert(/^WorkingDirectory=\/srv\/thetutorlyfe\.com\/current$/m.test(directService), 'Direct API service must use The Tutor Lyfe release root')
 assert(/^EnvironmentFile=-\/etc\/thetutorlyfe\.com\/api\.env$/m.test(directService), 'Direct API service must load its server-only configuration')
+assert(directService.split('\n').includes(`ExecStart=/opt/node-${toolchainMetadata.node}/bin/node back-end/dist/server.js`), 'Direct API must select the approved runtime without replacing the host-wide binary')
 assert(/^Environment=HOST=127\.0\.0\.1$/m.test(directService), 'Direct API service must bind only to loopback')
-assert(/^ExecStart=\/opt\/node-26\.13\.0\/bin\/node back-end\/dist\/server\.js$/m.test(directService), 'Direct API service must use the approved isolated Node runtime')
 assert(/^NoNewPrivileges=true$/m.test(directService), 'Direct API service must deny privilege escalation')
 assert(/^ProtectSystem=strict$/m.test(directService), 'Direct API service must have a read-only system view')
 assert(!/0\.0\.0\.0|docker/i.test(directService), 'Direct API service must not depend on a container listener')
@@ -126,7 +127,7 @@ assert(/from = "\/healthz"/.test(netlifyConfiguration) && /from = "\/readyz"/.te
 
 const contract = JSON.parse(artifactContract)
 assert(contract.runtime?.os === 'linux' && contract.runtime?.arch === 'arm64', 'Runtime contract must bind Linux ARM64')
-assert(contract.runtime?.node === '26.13.0' && contract.runtime?.npmBuildOnly === '12.2.1', 'Runtime contract must bind the approved Node and npm versions')
+assert(contract.runtime?.node === toolchainMetadata.node && contract.runtime?.npmBuildOnly === toolchainMetadata.npm, 'Runtime contract must bind the approved Node and npm versions')
 assert(contract.deployment?.applicationId === 'thetutorlyfe.com' && contract.deployment?.schemaVersion === 1, 'Runtime contract must bind the site and host capability schema')
 assert(/validate_deployment_contract/.test(artifactVerifier), 'Artifact verifier must validate host requirements')
 assert(contract.required?.includes('back-end/dist/boundedRateStore.js'), 'Runtime contract must independently require the bounded rate module')

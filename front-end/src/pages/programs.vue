@@ -1,6 +1,11 @@
 <!-- Preserve the captured site's semantic class order and compact repeated markup. -->
 <script setup lang="ts">
 /* eslint-disable unocss/order, vue/singleline-html-element-content-newline */
+import { ref } from 'vue'
+import { useSeoMeta } from '#app'
+import { NuxtLink } from '#components'
+import { useScrollReveal } from '~/composables/useScrollReveal'
+
 const openFaqs = ref(new Set<number>())
 
 function isFaqOpen(index: number) {

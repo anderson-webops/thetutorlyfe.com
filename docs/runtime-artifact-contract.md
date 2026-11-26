@@ -14,7 +14,12 @@ service journal. `LEAD_WEBHOOK_URL` remains in the protected host environment an
 
 ## Acceptance invariants
 
-- Build only from a clean exact annotated release commit on Linux ARM64 with Node 26.13.0 and npm 12.2.1.
+- Build only from a clean exact annotated release commit on Linux ARM64 with Node 26.13.1 and npm 12.2.2
+  selected through the independently locked `webops-locked-npm-v1` profile. Bind the accepted profile, lock digest,
+  and installed payload digest to the release receipt.
+- Run `bash scripts/prepare-unimport-source.sh` before the locked root install and
+  `bash scripts/prepare-compiler-fixtures.sh` afterward. Run full and production audits, registry signature checks,
+  lint, typechecking, tests, builds, deployment-output checks, and isolated promotion recovery before publication.
 - Install the standalone backend from `back-end/package-lock.json` with no fallback and no development packages.
 - Inventory every file by path, size, and SHA-256; independently require critical files so an incomplete self-authored
   inventory cannot pass.

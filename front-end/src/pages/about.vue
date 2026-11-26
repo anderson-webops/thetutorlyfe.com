@@ -1,6 +1,10 @@
 <!-- Preserve the captured site's semantic class order. -->
 <script setup lang="ts">
 /* eslint-disable unocss/order */
+import { useSeoMeta } from '#app'
+import { NuxtLink } from '#components'
+import { useScrollReveal } from '~/composables/useScrollReveal'
+
 useSeoMeta({
   title: 'About Maggie | The Tutor Lyfe',
   description: 'Meet Maggie — a licensed teacher with a Master\'s in Education based in Lawrenceville, GA, offering online math tutoring for grades 3–10.',

@@ -1,13 +1,17 @@
 import assert from 'node:assert/strict'
+import { Buffer } from 'node:buffer'
 import { spawnSync } from 'node:child_process'
 import { access, readFile } from 'node:fs/promises'
 import { createServer } from 'node:http'
+import { createRequire } from 'node:module'
 import process from 'node:process'
+import { Readable } from 'node:stream'
 
 assert.equal(process.platform, 'linux')
 assert.equal(process.arch, 'arm64')
-assert.equal(process.version, 'v26.13.0')
+assert.equal(process.version, 'v26.13.1')
 assert.equal(process.cwd(), '/app')
+assert.ok(['complete', 'missing-module'].includes(process.argv[2]))
 for (const absent of [
   '/home/builder',
   '/mnt/input',
@@ -38,8 +42,40 @@ else {
   const metadata = JSON.parse(await readFile('/app/front-end/.output/public/release.json', 'utf8'))
   const manifest = JSON.parse(await readFile('/app/runtime-manifest.json', 'utf8'))
   assert.equal(metadata.commitSha, manifest.commit)
+  assert.equal(manifest.contract.runtime.node, '26.13.1')
+  assert.equal(manifest.contract.deployment.applicationId, 'thetutorlyfe.com')
+  const runtimeRequire = createRequire('/app/back-end/package.json')
+  const expressRequire = createRequire(runtimeRequire.resolve('express'))
+  const bodyParserRequire = createRequire(expressRequire.resolve('body-parser'))
+  const cookie = expressRequire('cookie')
+  const encodeUrl = expressRequire('encodeurl')
+  const getRawBody = bodyParserRequire('raw-body')
+  const typeIs = bodyParserRequire('type-is')
+  assert.equal(cookie.serialize('runtime', 'value /', { httpOnly: true, sameSite: 'strict' }), 'runtime=value%20%2F; HttpOnly; SameSite=Strict')
+  assert.equal(encodeUrl('/runtime path'), '/runtime%20path')
+  assert.equal(typeIs({
+    headers: { 'content-type': 'application/problem+json', 'content-length': '1' },
+  }, '+json'), 'application/problem+json')
+  assert.equal(await getRawBody(Readable.from([
+    Buffer.from([118, 0, 0, 0]),
+  ]), { encoding: 'utf-32le' }), 'v')
+  await assert.rejects(getRawBody(Readable.from([
+    Buffer.alloc(3),
+  ]), { limit: 2 }), { status: 413, type: 'entity.too.large' })
 
   const { createApp } = await import('/app/back-end/dist/app.js')
+  const guard = spawnSync(process.execPath, ['--input-type=module', '-e', `
+    Object.defineProperty(process, 'version', { value: 'v26.13.0' })
+    const { createApp } = await import('/app/back-end/dist/app.js')
+    createApp()
+  `], {
+    env: { NODE_ENV: 'production', DOTENV_CONFIG_PATH: '/absent' },
+    encoding: 'utf8',
+    timeout: 5000,
+  })
+  assert.equal(guard.signal, null)
+  assert.notEqual(guard.status, 0)
+  assert.match(guard.stderr, /requires Node.js 26.13.1/)
   let ready = false
   let forwarded = 0
   const app = createApp({
@@ -114,5 +150,7 @@ else {
     readinessRecovery: true,
     syntheticLead: true,
     restart: true,
+    modernHttpCompatibility: true,
+    unsupportedRuntimeRejected: true,
   }))
 }

@@ -3,6 +3,7 @@ import { rateLimit } from 'express-rate-limit'
 import helmet from 'helmet'
 
 import { BoundedRateStore } from './boundedRateStore.js'
+import { assertSupportedRuntime } from './runtime-version.js'
 
 const readOnlyMethods = ['GET', 'HEAD', 'OPTIONS'] as const
 const leadMethods = ['POST', 'OPTIONS'] as const
@@ -147,6 +148,7 @@ function serializeLead(lead: LeadPayload) {
 }
 
 export function createApp(options: AppOptions = {}) {
+  assertSupportedRuntime()
   const trustProxyHops = options.trustProxyHops ?? 0
   const leadWebhookUrl = parseWebhookUrl(options.leadWebhookUrl ?? process.env.LEAD_WEBHOOK_URL)
   const fetchImpl = options.fetchImpl ?? fetch
